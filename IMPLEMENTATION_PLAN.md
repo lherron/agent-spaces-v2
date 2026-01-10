@@ -59,7 +59,8 @@
 - [x] `src/validator.ts` - Cycle detection, missing deps, invalid refs (ERRORS only)
 - [x] `src/index.ts` - Public exports
 - [x] `package.json` - Package setup with semver dependency
-- [x] Unit tests for resolution algorithm (31 tests)
+- [x] Unit tests for resolution algorithm (48 tests)
+- Note: closure.ts has comprehensive unit tests (17 tests for cycle detection, diamond dependencies, DFS postorder, and helper functions)
 
 ---
 
@@ -204,6 +205,13 @@
 - Replaced `any` type assertions with proper type conversion functions
 - Updated gc.test.ts to use valid commit SHA format
 
+### Resolver Closure Unit Tests
+- Added closure.test.ts to provide comprehensive unit test coverage for:
+  - Cycle detection (simple A→B→A, self-referential A→A, longer A→B→C→A cycles)
+  - Diamond dependencies (A and B both depend on C)
+  - DFS postorder traversal ordering
+  - Helper functions (getSpace, getSpacesInOrder, isRoot, getDependents)
+
 ---
 
 ## Known Issues
@@ -217,7 +225,8 @@
 - All integration tests passing. Previously skipped "exits with claude exit code" test is now fixed by adding `env` option to RunOptions to pass env vars to subprocess.
 
 ### Version Tags
-- Latest git tag is `v0.0.21`
+- Current git tag is `v0.0.21`
+- Project is ready for `v0.0.22`
 
 ### Outstanding TODOs
 - [x] `packages/cli/src/commands/upgrade.ts` - Filter space by ID in upgrade command (implemented via `pinnedSpaces` in resolver and `upgradeSpaceIds` in engine)
