@@ -95,7 +95,11 @@ export async function acquireLock(
           await release()
         } catch (err) {
           // Ignore errors when releasing (lock may already be released)
-          if (err instanceof Error && !err.message.includes('not acquired')) {
+          if (
+            err instanceof Error &&
+            !err.message.includes('not acquired') &&
+            !err.message.includes('already released')
+          ) {
             throw new LockError(`Failed to release lock: ${err.message}`, lockPath)
           }
         }
@@ -104,7 +108,7 @@ export async function acquireLock(
     }
   } catch (err) {
     if (err instanceof Error) {
-      if (err.message.includes('ELOCKED')) {
+      if (err.message.includes('ELOCKED') || err.message.includes('already being held')) {
         throw new LockTimeoutError(lockPath, opts.timeout)
       }
       throw new LockError(err.message, lockPath)
