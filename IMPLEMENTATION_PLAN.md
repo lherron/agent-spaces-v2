@@ -207,8 +207,7 @@
 
 ### Outstanding TODOs
 - [ ] `packages/cli/src/commands/upgrade.ts:61-62` - Filter space by ID in upgrade command (requires engine changes)
-- [ ] `packages/engine/src/install.ts:188` - Compare manifest with lock file in installNeeded() (optimization)
-- [ ] `packages/core/src/index.test.ts:12-17` - Unit tests for core modules
+- [x] `packages/core/src/index.test.ts` - Unit tests for core modules (60 tests for refs and errors)
 
 ---
 
