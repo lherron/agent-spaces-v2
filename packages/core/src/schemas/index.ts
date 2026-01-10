@@ -21,6 +21,8 @@ const ajv = new Ajv({
   strict: true,
   allErrors: true,
   verbose: true,
+  // Disable schema validation since we use draft 2020-12 which isn't bundled
+  validateSchema: false,
 })
 
 addFormats(ajv)

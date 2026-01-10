@@ -2,15 +2,15 @@
 
 ## Current Status
 
-**Completed**: ~15% (1 of 9 packages fully implemented)
+**Completed**: ~35% (3 of 9 packages fully implemented)
 
 ### Packages Status
 
 | Package | Status | Notes |
 |---------|--------|-------|
 | core | COMPLETE | Types, schemas, config parsers, errors, locks, atomic ops |
-| git | NOT STARTED | Blocks resolver, store |
-| claude | NOT STARTED | Blocks engine |
+| git | COMPLETE | exec (safe git command execution), tags (tag operations for versioning), show (file content at commit), tree (ls-tree for integrity hashing), archive (extraction), repo (clone/fetch/status operations) |
+| claude | COMPLETE | detect (find binary, query version, detect flags), invoke (safe subprocess with plugin-dir and mcp-config flags), validate (plugin validation) |
 | resolver | NOT STARTED | Blocks engine |
 | store | NOT STARTED | Blocks materializer |
 | materializer | NOT STARTED | Blocks engine |
@@ -22,24 +22,24 @@
 
 ## Priority 1: Foundation (Blocks Everything)
 
-### packages/git - Git Operations Wrapper
-- [ ] `src/exec.ts` - Safe exec helper using argv arrays (no shell interpolation)
-- [ ] `src/tags.ts` - List tags matching pattern, create immutable semver tags
-- [ ] `src/show.ts` - Read file contents at specific commit (`git show`)
-- [ ] `src/archive.ts` - Extract directory tree at commit
-- [ ] `src/tree.ts` - List tree entries (path, mode, blob OID) for integrity hashing
-- [ ] `src/repo.ts` - Clone, fetch, init, status, remote operations
-- [ ] `src/index.ts` - Public exports
-- [ ] `package.json` - Package setup
-- [ ] Unit tests for all operations
+### packages/git - Git Operations Wrapper (COMPLETE)
+- [x] `src/exec.ts` - Safe exec helper using argv arrays (no shell interpolation)
+- [x] `src/tags.ts` - List tags matching pattern, create immutable semver tags
+- [x] `src/show.ts` - Read file contents at specific commit (`git show`)
+- [x] `src/archive.ts` - Extract directory tree at commit
+- [x] `src/tree.ts` - List tree entries (path, mode, blob OID) for integrity hashing
+- [x] `src/repo.ts` - Clone, fetch, init, status, remote operations
+- [x] `src/index.ts` - Public exports
+- [x] `package.json` - Package setup
+- [x] Unit tests for all operations
 
-### packages/claude - Claude CLI Wrapper
-- [ ] `src/detect.ts` - Find claude binary, query version, detect supported flags
-- [ ] `src/invoke.ts` - Spawn claude safely using argv array (no shell)
-- [ ] `src/validate.ts` - Optional plugin validation (if Claude supports it)
-- [ ] `src/index.ts` - Public exports
-- [ ] `package.json` - Package setup
-- [ ] Support `ASP_CLAUDE_PATH` env override for testing
+### packages/claude - Claude CLI Wrapper (COMPLETE)
+- [x] `src/detect.ts` - Find claude binary, query version, detect supported flags
+- [x] `src/invoke.ts` - Spawn claude safely using argv array (no shell)
+- [x] `src/validate.ts` - Optional plugin validation (if Claude supports it)
+- [x] `src/index.ts` - Public exports
+- [x] `package.json` - Package setup
+- [x] Support `ASP_CLAUDE_PATH` env override for testing
 
 ---
 
