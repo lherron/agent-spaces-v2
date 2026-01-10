@@ -192,31 +192,11 @@
 
 ## Bug Fixes Applied
 
-### Engine Path Handling
-- Fixed `loadProjectManifest` in `packages/engine/src/resolve.ts` to correctly resolve paths
-- Fixed `loadLockFileIfExists` in `packages/engine/src/resolve.ts` to correctly resolve paths
-- Fixed `lockFileExists`/`readLockJson` calls in `packages/engine/src/build.ts`
-- Fixed `lockFileExists`/`readLockJson` calls in `packages/engine/src/explain.ts`
-
-### Core Package Tests
-- Fixed lint errors in `refs.test.ts` (template literal conversion for string concatenation)
-
-### Lint Rule and Type Assertion Fixes
-- Fixed assignment-in-expression in W202 lint rule (using matchAll for safe iteration)
-- Replaced `any` type assertions with proper type conversion functions
-- Updated gc.test.ts to use valid commit SHA format
-
-### Resolver Closure Unit Tests
-- Added closure.test.ts to provide comprehensive unit test coverage for:
-  - Cycle detection (simple A→B→A, self-referential A→A, longer A→B→C→A cycles)
-  - Diamond dependencies (A and B both depend on C)
-  - DFS postorder traversal ordering
-  - Helper functions (getSpace, getSpacesInOrder, isRoot, getDependents)
-
-### CLI Entry Point Fix
-- Fixed `bin/asp.js` entry point to properly export and call the main function
-- The issue was that `import.meta.main` was false when imported from the bin file, so the CLI wasn't actually running
-- Solution: explicitly call `main()` from the bin entry point instead of relying on `import.meta.main`
+- Engine path handling in resolve.ts, build.ts, explain.ts
+- Core package test linting and type assertions
+- W202 lint rule assignment-in-expression and gc.test.ts SHA format
+- CLI entry point (bin/asp.js) to properly call main()
+- Added comprehensive closure.test.ts for cycle detection and DFS postorder verification
 
 ---
 
@@ -231,7 +211,7 @@
 - All integration tests passing. Previously skipped "exits with claude exit code" test is now fixed by adding `env` option to RunOptions to pass env vars to subprocess.
 
 ### Version Tags
-- Current git tag is `v0.0.25`
+- Current git tag is `v0.0.26`
 
 ### Test Coverage
 - Total tests: 341 passing
