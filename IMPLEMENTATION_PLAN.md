@@ -360,6 +360,24 @@ Updated SPEC.md for `asp build` command to match implementation:
 
 ---
 
+## Spec Alignment (v0.0.49)
+
+### PLAN.md Additions
+- Added W301 (lock-missing) warning to Phase 6 lint rules section to match SPEC.md
+- Added `asp repo gc` command (item 16) to Phase 5 CLI commands section
+- Added `repo/gc.ts` to the CLI directory tree listing
+
+### SPEC.md Additions
+- Added `global-lock.json` to ASP Home layout for global-mode pin persistence
+- Documented global lock persistence in section 6.3 "Outside a project (global mode)"
+- Added `claude.args` pass-through CLI args option in asp-targets.toml examples
+- Added per-target `[targets.<name>.claude]` override documentation
+- Added per-target `[targets.<name>.resolver]` options documentation (locked, allow_dirty)
+
+These changes align all three spec files (SPEC.md, SCHEMAS.md, PLAN.md) so they consistently document the same features.
+
+---
+
 ## Known Issues
 
 ### Spec Alignment Status
