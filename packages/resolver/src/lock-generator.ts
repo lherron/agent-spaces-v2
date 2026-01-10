@@ -125,7 +125,8 @@ export async function generateLockFile(
 
   // Build space entries
   for (const [key, space] of allSpaces) {
-    const integrity = integrities.get(key)!
+    const integrity = integrities.get(key)
+    if (!integrity) throw new Error(`Integrity not computed for space: ${key}`)
     const pluginIdentity = derivePluginIdentity(space.manifest)
 
     const resolvedFrom: ResolvedFrom = {
@@ -169,8 +170,10 @@ export async function generateLockFile(
   for (const target of targets) {
     // Build env hash data
     const envHashData = target.closure.loadOrder.map((key) => {
-      const space = allSpaces.get(key)!
-      const integrity = integrities.get(key)!
+      const space = allSpaces.get(key)
+      if (!space) throw new Error(`Space not found: ${key}`)
+      const integrity = integrities.get(key)
+      if (!integrity) throw new Error(`Integrity not computed for space: ${key}`)
       const pluginIdentity = derivePluginIdentity(space.manifest)
       return {
         spaceKey: key,

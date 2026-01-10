@@ -184,7 +184,7 @@ export async function materializeWithMcp(
   let mcpConfigPath: string | undefined
   if (options.mcpOutputDir !== undefined) {
     const spacesDirs = plugins.map((p) => ({
-      spaceId: p.spaceKey.split('@')[0]!,
+      spaceId: p.spaceKey.split('@')[0] ?? p.spaceKey,
       dir: p.pluginPath,
     }))
 

@@ -7,6 +7,7 @@
 
 import { describe, expect, it } from 'bun:test'
 import {
+  type SpaceKey,
   asCommitSha,
   asSpaceId,
   buildSpaceKey,
@@ -104,7 +105,7 @@ describe('buildSpaceKey', () => {
 
 describe('parseSpaceKey', () => {
   it('should parse key into id and commit', () => {
-    const key = 'my-space@abc123def456' as any
+    const key = 'my-space@abc123def456' as SpaceKey
     const { id, commit } = parseSpaceKey(key)
     expect(String(id)).toBe('my-space')
     expect(commit).toBe('abc123def456')
@@ -113,7 +114,7 @@ describe('parseSpaceKey', () => {
 
 describe('parseAllRefs', () => {
   it('should parse multiple refs', () => {
-    const refs = parseAllRefs(['space:a@stable' as any, 'space:b@^1.0.0' as any])
+    const refs = parseAllRefs(['space:a@stable', 'space:b@^1.0.0'])
     expect(refs.length).toBe(2)
     expect(String(refs[0]?.id)).toBe('a')
     expect(String(refs[1]?.id)).toBe('b')

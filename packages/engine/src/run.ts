@@ -318,7 +318,8 @@ export async function runGlobalSpace(
   try {
     // Build materialization inputs from closure
     const inputs = closure.loadOrder.map((key) => {
-      const space = closure.spaces.get(key)!
+      const space = closure.spaces.get(key)
+      if (!space) throw new Error(`Space not found in closure: ${key}`)
       const lockEntry = lock.spaces[key]
       return {
         manifest: {
@@ -352,7 +353,8 @@ export async function runGlobalSpace(
     let warnings: LintWarning[] = []
     if (options.printWarnings !== false) {
       const lintData: SpaceLintData[] = closure.loadOrder.map((key, i) => {
-        const space = closure.spaces.get(key)!
+        const space = closure.spaces.get(key)
+        if (!space) throw new Error(`Space not found in closure: ${key}`)
         return {
           key,
           manifest: space.manifest,

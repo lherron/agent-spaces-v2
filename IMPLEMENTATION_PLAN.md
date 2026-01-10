@@ -1,10 +1,10 @@
 # Implementation Plan: Fix Cognitive Complexity Lint Warnings
 
-**Status:** 58 lint warnings (down from 62, reduced by refactoring high-complexity CLI commands)
+**Status:** 49 warnings (down from 62, reduced by refactoring CLI commands)
 
 ---
 
-## Priority 1: CLI Shared Helpers (Highest Impact)
+## Priority 1: CLI Shared Helpers (COMPLETE)
 
 - [x] **Create `packages/cli/src/helpers.ts`** with shared utilities
   - [x] `getProjectContext(options)` - wraps project root discovery + returns context
@@ -13,19 +13,19 @@
   - [x] `getStatusIcon(status)` / `getStatusColor(status)` - for doctor.ts output
   - [x] `formatCheckResults(checks, options)` / `outputDoctorSummary()` - doctor output
 
-- [ ] **Refactor remaining CLI commands to use helpers** (partially complete)
-  - [ ] `build.ts` (26 → ~15)
+- [x] **Refactor remaining CLI commands to use helpers** (COMPLETE)
+  - [x] `build.ts` (26 → 0, no warnings)
   - [x] `lint.ts` (51 → 0, fully refactored with helper functions)
-  - [ ] `list.ts` (28 → ~15)
-  - [ ] `remove.ts` (17 → ~12)
-  - [ ] `upgrade.ts` (19 → ~12)
-  - [ ] `repo/gc.ts` (22 → ~15)
-  - [ ] `repo/init.ts` (20 → ~12)
-  - [ ] `repo/publish.ts` (21 → ~15)
+  - [x] `list.ts` (28 → 0, no warnings)
+  - [x] `remove.ts` (17 → 0, no warnings)
+  - [x] `upgrade.ts` (19 → 0, no warnings)
+  - [x] `repo/gc.ts` (22 → 0, no warnings)
+  - [x] `repo/init.ts` (20 → 0, no warnings)
+  - [x] `repo/publish.ts` (21 → 0, no warnings)
 
 ---
 
-## Priority 2: High-Complexity CLI Commands
+## Priority 2: High-Complexity CLI Commands (COMPLETE)
 
 - [x] **Refactor `diff.ts`** (92 → 0, no warnings)
   - [x] Extract `buildSpacesMap(lock, targetName)` - builds Map from lock file
@@ -47,14 +47,16 @@
   - [x] Extract `formatGitChanges()` / `formatSpacesList()` - output formatting
   - [x] Extract `formatStatusText()` - main text formatter
 
-- [x] **Refactor `run.ts`** (44 → 0, no warnings)
+- [x] **Refactor `run.ts` (CLI)** (44 → 0, no warnings)
   - [x] Extract `isLocalSpacePath()` - local space detection
   - [x] Extract `detectRunMode(projectPath, target)` - project/global/dev mode detection
   - [x] Extract `runProjectMode()` / `runGlobalMode()` / `runDevMode()` - mode handlers
   - [x] Extract `showInvalidModeHelp()` - error display
 
-- [ ] **Refactor `repo/tags.ts`** (36 → ~15 per function)
-  - [ ] Extract `formatTagsOutput(tags, options)` - JSON vs text formatting
+- [x] **Refactor `repo/tags.ts`** (36 → 0, no warnings)
+  - [x] Extract `parseVersionFromTag()`, `parseSemver()`, `sortVersionsDescending()`
+  - [x] Extract `loadDistTags()` - dist-tags loading
+  - [x] Extract `formatTagsText()` - text output formatting
 
 ---
 
@@ -116,13 +118,17 @@ After each priority block:
 ## Progress Summary
 
 - **Before:** 62 warnings
-- **After Priority 2 (partial):** 58 warnings (reduced by 4)
-- Major files refactored:
-  - `diff.ts`: 92 → 0 (no warnings)
-  - `doctor.ts`: 73 → 0 (no warnings)
-  - `lint.ts`: 51 → 0 (no warnings)
-  - `repo/status.ts`: 61 → 0 (no warnings)
-  - `run.ts`: 44 → 0 (no warnings)
+- **After Priority 1 & 2 (CLI complete):** 49 warnings (reduced by 13)
+- CLI commands refactored (all at 0 complexity warnings now):
+  - `build.ts`: 26 → 0
+  - `list.ts`: 28 → 0
+  - `remove.ts`: 17 → 0
+  - `upgrade.ts`: 19 → 0
+  - `repo/gc.ts`: 22 → 0
+  - `repo/init.ts`: 20 → 0
+  - `repo/publish.ts`: 21 → 0
+  - `repo/tags.ts`: 36 → 0
+  - Plus previous: `diff.ts`, `doctor.ts`, `lint.ts`, `repo/status.ts`, `run.ts` (CLI)
 
 ### Key Approach
 Created `packages/cli/src/helpers.ts` with shared utilities that multiple commands use:
@@ -131,3 +137,13 @@ Created `packages/cli/src/helpers.ts` with shared utilities that multiple comman
 - `logInvocationOutput()` - stdout/stderr logging
 - `formatCheckResults()` / `outputDoctorSummary()` - doctor output helpers
 - `getStatusIcon()` / `getStatusColor()` - status display helpers
+
+### Remaining Complexity Warnings (12 total)
+- `packages/claude/src/validate.ts`: 48, 34 (2 warnings)
+- `packages/engine/src/run.ts`: 19, 21, 18 (3 warnings)
+- `packages/git/src/repo.ts`: 34 (1 warning)
+- `packages/engine/src/explain.ts`: 20 (1 warning)
+- `packages/resolver/src/lock-generator.ts`: 23 (1 warning)
+- `packages/lint/src/rules/W202-agent-command-namespace.ts`: 19 (1 warning)
+- `packages/engine/src/install.ts`: 16 (1 warning)
+- Test utilities (low priority): `space-toml.test.ts` (30), `targets-toml.test.ts` (29)
