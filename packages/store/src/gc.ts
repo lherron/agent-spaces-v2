@@ -1,7 +1,18 @@
 import type { LockFile, Sha256Integrity } from '@agent-spaces/core'
-import { type CacheOptions, computePluginCacheKey, deleteCache, listCacheEntries } from './cache.js'
+import {
+  type CacheOptions,
+  computePluginCacheKey,
+  deleteCache,
+  getCacheSize,
+  listCacheEntries,
+} from './cache.js'
 import type { PathResolver } from './paths.js'
-import { type SnapshotOptions, deleteSnapshot, listSnapshots } from './snapshot.js'
+import {
+  type SnapshotOptions,
+  deleteSnapshot,
+  getSnapshotSize,
+  listSnapshots,
+} from './snapshot.js'
 
 /**
  * GC result statistics.
@@ -85,6 +96,10 @@ export async function runGC(lockFiles: LockFile[], options: GCOptions): Promise<
   const snapshots = await listSnapshots(snapshotOpts)
   for (const integrity of snapshots) {
     if (!reachableIntegrities.has(integrity)) {
+      // Compute size before deletion
+      const size = await getSnapshotSize(integrity, snapshotOpts)
+      result.bytesFreed += size
+
       if (!options.dryRun) {
         await deleteSnapshot(integrity, snapshotOpts)
       }
@@ -98,6 +113,10 @@ export async function runGC(lockFiles: LockFile[], options: GCOptions): Promise<
 
   for (const cacheKey of cacheEntries) {
     if (!reachableCacheKeys.has(cacheKey)) {
+      // Compute size before deletion
+      const size = await getCacheSize(cacheKey, cacheOpts)
+      result.bytesFreed += size
+
       if (!options.dryRun) {
         await deleteCache(cacheKey, cacheOpts)
       }

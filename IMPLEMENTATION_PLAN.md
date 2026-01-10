@@ -262,6 +262,15 @@ The following fixes were applied to align the SPEC with the implementation and S
 
 ---
 
+## Features Added (v0.0.40)
+
+### GC bytesFreed Implementation
+- The `runGC` function now properly tracks and reports `bytesFreed` for deleted snapshots and cache entries
+- Previously `bytesFreed` was hardcoded to 0; now it uses `getSnapshotSize()` and `getCacheSize()` functions to compute actual sizes before deletion
+- Integration test updated to verify bytesFreed is correctly reported
+
+---
+
 ## Known Issues
 
 ### Spec Alignment Status
@@ -277,7 +286,7 @@ The following fixes were applied to align the SPEC with the implementation and S
 - All integration tests passing. Previously skipped "exits with claude exit code" test is now fixed by adding `env` option to RunOptions to pass env vars to subprocess.
 
 ### Version Tags
-- Current git tag is `v0.0.39`
+- Current git tag is `v0.0.40`
 
 ### Test Coverage
 - Total tests: 470 passing (415 package tests + 55 integration tests)
