@@ -94,14 +94,11 @@ async function createTempDir(aspHome: string): Promise<string> {
 }
 
 /**
- * Create an isolated settings file for Claude.
- * This ensures Claude runs without inheriting user's global settings.
+ * Get setting sources value for isolation.
+ * Empty string means no settings are loaded from user/project/local sources.
  */
-async function createIsolatedSettings(tempDir: string): Promise<string> {
-  const settingsPath = join(tempDir, 'isolated-settings.json')
-  // Empty settings object - Claude will use defaults
-  await writeFile(settingsPath, '{}', 'utf-8')
-  return settingsPath
+function getIsolatedSettingSources(): string {
+  return ''
 }
 
 // ============================================================================
@@ -251,7 +248,7 @@ export async function run(targetName: string, options: RunOptions): Promise<RunR
 
     // Create isolated settings if isolation is enabled (default: true)
     const isolated = options.isolated !== false
-    const settingsSource = isolated ? await createIsolatedSettings(tempDir) : undefined
+    const settingSources = isolated ? getIsolatedSettingSources() : undefined
 
     // Build Claude invocation options
     const invokeOptions: ClaudeInvokeOptions = {
@@ -259,7 +256,7 @@ export async function run(targetName: string, options: RunOptions): Promise<RunR
       mcpConfig: buildResult.mcpConfigPath,
       model: claudeOptions.model,
       permissionMode: claudeOptions.permission_mode,
-      settingsSource,
+      settingSources,
       cwd: options.cwd ?? options.projectPath,
       args: [...(claudeOptions.args ?? []), ...(options.extraArgs ?? [])],
       env: options.env,
@@ -444,13 +441,13 @@ export async function runGlobalSpace(
 
     // Create isolated settings if isolation is enabled (default: true)
     const isolated = options.isolated !== false
-    const settingsSource = isolated ? await createIsolatedSettings(tempDir) : undefined
+    const settingSources = isolated ? getIsolatedSettingSources() : undefined
 
     // Build Claude invocation options
     const invokeOptions: ClaudeInvokeOptions = {
       pluginDirs,
       mcpConfig: mcpConfigPath,
-      settingsSource,
+      settingSources,
       cwd: options.cwd ?? process.cwd(),
       args: options.extraArgs,
       env: options.env,
@@ -554,13 +551,13 @@ export async function runLocalSpace(
 
     // Create isolated settings if isolation is enabled (default: true)
     const isolated = options.isolated !== false
-    const settingsSource = isolated ? await createIsolatedSettings(tempDir) : undefined
+    const settingSources = isolated ? getIsolatedSettingSources() : undefined
 
     // Build Claude invocation options
     const invokeOptions: ClaudeInvokeOptions = {
       pluginDirs,
       mcpConfig: mcpConfigPath,
-      settingsSource,
+      settingSources,
       cwd: options.cwd ?? spacePath,
       args: options.extraArgs,
       env: options.env,

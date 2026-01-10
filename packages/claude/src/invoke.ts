@@ -36,8 +36,8 @@ export interface ClaudeInvokeOptions {
   model?: string | undefined
   /** Permission mode (--permission-mode flag) */
   permissionMode?: string | undefined
-  /** Path to settings source file (--settings-source flag) for isolation */
-  settingsSource?: string | undefined
+  /** Setting sources to load (--setting-sources flag). Empty string for isolation. */
+  settingSources?: string | undefined
   /** Additional arguments to pass through */
   args?: string[] | undefined
   /** Working directory for Claude */
@@ -94,9 +94,9 @@ export function buildClaudeArgs(options: ClaudeInvokeOptions): string[] {
     args.push('--permission-mode', options.permissionMode)
   }
 
-  // Add settings source for isolation
-  if (options.settingsSource) {
-    args.push('--settings-source', options.settingsSource)
+  // Add setting sources for isolation
+  if (options.settingSources !== undefined) {
+    args.push('--setting-sources', options.settingSources)
   }
 
   // Add pass-through arguments
