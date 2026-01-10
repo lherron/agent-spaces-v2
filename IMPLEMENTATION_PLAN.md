@@ -2,7 +2,7 @@
 
 ## Current Status
 
-**Completed**: ~55% (5 of 9 packages fully implemented)
+**Completed**: ~65% (6 of 9 packages fully implemented)
 
 ### Packages Status
 
@@ -13,7 +13,7 @@
 | claude | COMPLETE | detect (find binary, query version, detect flags), invoke (safe subprocess with plugin-dir and mcp-config flags), validate (plugin validation) |
 | resolver | COMPLETE | ref-parser, dist-tags, git-tags, selector (resolution), closure (DFS postorder), integrity, lock-generator, validator |
 | store | COMPLETE | paths (ASP_HOME), snapshot (extraction/storage), cache (plugin cache), gc (garbage collection) |
-| materializer | NOT STARTED | Blocks engine |
+| materializer | COMPLETE | plugin-json, link-components, hooks-builder, mcp-composer, materialize orchestration |
 | engine | NOT STARTED | Blocks CLI |
 | lint | NOT STARTED | Blocks engine, CLI |
 | cli | NOT STARTED | Final integration layer |
@@ -75,18 +75,18 @@
 
 ---
 
-## Priority 4: Plugin Materialization
+## Priority 4: Plugin Materialization (COMPLETE)
 
-### packages/materializer - Plugin Directory Generation
-- [ ] `src/plugin-json.ts` - Generate `.claude-plugin/plugin.json` from space.toml
-- [ ] `src/link-components.ts` - Hardlink components from store snapshot
-- [ ] `src/copy-components.ts` - Fallback copier for cross-device scenarios
-- [ ] `src/hooks-builder.ts` - Validate hooks.json, ensure scripts exist/executable
-- [ ] `src/mcp-composer.ts` - Compose MCP config from spaces (passthrough only)
-- [ ] `src/cache.ts` - Cache lookup by pluginCacheKey
-- [ ] `src/index.ts` - Public exports
-- [ ] `package.json` - Package setup
-- [ ] Unit tests for materialization
+### packages/materializer - Plugin Directory Generation (COMPLETE)
+- [x] `src/plugin-json.ts` - Generate `.claude-plugin/plugin.json` from space manifest
+- [x] `src/link-components.ts` - Hardlink components (commands, skills, agents, hooks, scripts, mcp)
+- [x] `src/hooks-builder.ts` - Validate hooks.json, ensure scripts executable
+- [x] `src/mcp-composer.ts` - Compose MCP config from spaces with collision detection
+- [x] `src/materialize.ts` - Orchestration with cache support
+- [x] `src/index.ts` - Public exports
+- [x] `package.json` - Package setup
+- [x] Unit tests for materialization (19 tests)
+- Note: Cache management reuses store package; copy fallback via core's linkOrCopy
 
 ---
 

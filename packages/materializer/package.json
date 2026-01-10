@@ -1,0 +1,17 @@
+{
+  "name": "@agent-spaces/materializer",
+  "version": "0.1.0",
+  "description": "Plugin directory generation for Agent Spaces v2",
+  "type": "module",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "scripts": {
+    "build": "tsc",
+    "test": "bun test",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@agent-spaces/core": "workspace:*",
+    "@agent-spaces/store": "workspace:*"
+  }
+}
