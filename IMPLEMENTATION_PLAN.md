@@ -231,11 +231,17 @@
 - All integration tests passing. Previously skipped "exits with claude exit code" test is now fixed by adding `env` option to RunOptions to pass env vars to subprocess.
 
 ### Version Tags
-- Current git tag is `v0.0.24`
+- Current git tag is `v0.0.25`
+
+### Test Coverage
+- Total tests: 341 passing
+- Added tests for critical modules: atomic.ts (26), locks.ts (18), snapshot.ts (18), invoke.ts (21)
+- Fixed proper-lockfile error handling in locks.ts
 
 ### Outstanding TODOs
 - [x] `packages/cli/src/commands/upgrade.ts` - Filter space by ID in upgrade command (implemented via `pinnedSpaces` in resolver and `upgradeSpaceIds` in engine)
 - [x] `packages/core/src/index.test.ts` - Unit tests for core modules (60 tests for refs and errors)
+- [x] Added tests for core/atomic.ts, core/locks.ts, store/snapshot.ts, claude/invoke.ts
 
 All TODOs complete.
 
