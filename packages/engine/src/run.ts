@@ -41,6 +41,8 @@ export interface RunOptions extends ResolveOptions {
   cleanup?: boolean | undefined
   /** Whether to print warnings before running (default: true) */
   printWarnings?: boolean | undefined
+  /** Additional environment variables to pass to Claude subprocess */
+  env?: Record<string, string> | undefined
 }
 
 /**
@@ -113,6 +115,7 @@ export async function run(targetName: string, options: RunOptions): Promise<RunR
       permissionMode: claudeOptions.permission_mode,
       cwd: options.cwd ?? options.projectPath,
       args: [...(claudeOptions.args ?? []), ...(options.extraArgs ?? [])],
+      env: options.env,
     }
 
     let exitCode: number

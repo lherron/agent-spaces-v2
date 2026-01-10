@@ -198,21 +198,17 @@
 
 ## Known Issues
 
+### Lint Configuration
+- Biome's `useLiteralKeys` rule is disabled to avoid conflicts with TypeScript strict mode
+- Lint warnings: 45 total (complexity warnings, noExplicitAny, noNonNullAssertion) - these are acceptable and do not cause errors
+
 ### Integration Test Issues
 - `run.test.ts`: "exits with claude exit code" test is skipped due to env var propagation issue in subprocess (ASP_CLAUDE_PATH not propagating correctly to child process)
 
-### TODOs Found in Code
+### Outstanding TODOs
 - [ ] `packages/cli/src/commands/upgrade.ts:61-62` - Filter space by ID in upgrade command (requires engine changes)
 - [ ] `packages/engine/src/install.ts:188` - Compare manifest with lock file in installNeeded() (optimization)
-- [x] `packages/engine/src/index.test.ts:12-17` - Integration tests for engine modules (covered by integration-tests/)
 - [ ] `packages/core/src/index.test.ts:12-17` - Unit tests for core modules
-
-### Other Items
-- [ ] Verify all core package exports are correct
-- [x] Add unit tests for packages/core (placeholder added)
-- [x] Add integration tests for packages/engine (covered by integration-tests/)
-- [ ] Verify schema validation covers all edge cases
-- [ ] Consider W202 (agent-command-namespace) rule mentioned in spec but not in plan
 
 ---
 
