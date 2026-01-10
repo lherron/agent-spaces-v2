@@ -221,7 +221,7 @@
 - All integration tests passing. Previously skipped "exits with claude exit code" test is now fixed by adding `env` option to RunOptions to pass env vars to subprocess.
 
 ### Version Tags
-- Current git tag is `v0.0.26`
+- Current git tag is `v0.0.27`
 
 ### Test Coverage
 - Total tests: 346 passing
