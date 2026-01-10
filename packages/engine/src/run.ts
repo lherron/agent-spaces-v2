@@ -7,16 +7,20 @@
  * - Launch Claude with plugin directories
  */
 
-import { mkdir, mkdtemp, rm } from 'node:fs/promises'
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 
 import {
+  type LockFile,
   type SpaceKey,
   type SpaceRefString,
   getEffectiveClaudeOptions,
   isSpaceRefString,
+  lockFileExists,
   parseSpaceRef,
+  readLockJson,
   readSpaceToml,
+  serializeLockJson,
 } from '@agent-spaces/core'
 
 import {
@@ -79,6 +83,41 @@ async function createTempDir(aspHome: string): Promise<string> {
   const paths = new PathResolver({ aspHome })
   await mkdir(paths.temp, { recursive: true })
   return mkdtemp(join(paths.temp, 'run-'))
+}
+
+/**
+ * Persist a lock file to the global lock file.
+ * Merges with existing global lock if present, adding/updating entries.
+ *
+ * WHY: Global mode runs (asp run space:id@selector) need to persist pins
+ * to maintain "locked-by-default" behavior even for ad-hoc runs.
+ */
+async function persistGlobalLock(newLock: LockFile, globalLockPath: string): Promise<void> {
+  let existingLock: LockFile | undefined
+
+  // Load existing global lock if it exists
+  if (await lockFileExists(globalLockPath)) {
+    try {
+      existingLock = await readLockJson(globalLockPath)
+    } catch {
+      // If corrupt, we'll overwrite with new lock
+    }
+  }
+
+  // Merge with existing lock or use new lock as-is
+  const mergedLock: LockFile = existingLock
+    ? {
+        lockfileVersion: newLock.lockfileVersion,
+        resolverVersion: newLock.resolverVersion,
+        generatedAt: newLock.generatedAt,
+        registry: newLock.registry,
+        spaces: { ...existingLock.spaces, ...newLock.spaces },
+        targets: { ...existingLock.targets, ...newLock.targets },
+      }
+    : newLock
+
+  // Write merged lock file
+  await writeFile(globalLockPath, serializeLockJson(mergedLock), 'utf-8')
 }
 
 /**
@@ -267,6 +306,9 @@ export async function runGlobalSpace(
     cwd: registryPath,
     registry: { type: 'git', url: registryPath },
   })
+
+  // Persist to global lock file (merge with existing if present)
+  await persistGlobalLock(lock, paths.globalLock)
 
   // Create temp directory for materialization
   const tempDir = await createTempDir(aspHome)

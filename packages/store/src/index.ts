@@ -23,6 +23,7 @@ export {
   getSpaceSourcePath,
   getRegistryMetaPath,
   getDistTagsPath,
+  getGlobalLockPath,
   ensureDir,
   ensureAspHome,
   PathResolver,

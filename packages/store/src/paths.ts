@@ -118,6 +118,14 @@ export function getDistTagsPath(): string {
 }
 
 /**
+ * Get the path to the global lock file.
+ * Used for global mode runs (asp run space:id@selector).
+ */
+export function getGlobalLockPath(): string {
+  return join(getAspHome(), 'global-lock.json')
+}
+
+/**
  * Ensure a directory exists, creating it if necessary.
  */
 export async function ensureDir(path: string): Promise<void> {
@@ -168,6 +176,10 @@ export class PathResolver {
 
   get temp(): string {
     return join(this.aspHome, 'tmp')
+  }
+
+  get globalLock(): string {
+    return join(this.aspHome, 'global-lock.json')
   }
 
   snapshot(integrity: Sha256Integrity): string {
