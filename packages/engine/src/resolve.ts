@@ -8,11 +8,11 @@
 import * as path from 'node:path'
 
 import {
+  LOCK_FILENAME,
   type LockFile,
   type ProjectManifest,
-  type TargetDefinition,
-  LOCK_FILENAME,
   TARGETS_FILENAME,
+  type TargetDefinition,
   getTarget,
   lockFileExists,
   readLockJson,

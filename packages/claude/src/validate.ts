@@ -46,7 +46,7 @@ interface PluginJson {
 /**
  * Known component directories in a plugin.
  */
-const COMPONENT_DIRS = ['commands', 'agents', 'skills', 'hooks', 'scripts', 'mcp']
+const _COMPONENT_DIRS = ['commands', 'agents', 'skills', 'hooks', 'scripts', 'mcp']
 
 /**
  * Validate a single plugin directory.
@@ -81,7 +81,7 @@ export async function validatePlugin(pluginDir: string): Promise<PluginValidatio
       result.errors.push(`Not a directory: ${pluginDir}`)
       return result
     }
-  } catch (error) {
+  } catch (_error) {
     result.valid = false
     result.errors.push(`Directory not accessible: ${pluginDir}`)
     return result
@@ -197,7 +197,7 @@ export async function validatePlugin(pluginDir: string): Promise<PluginValidatio
  * Validate hooks.json content.
  */
 async function validateHooksJson(
-  pluginDir: string,
+  _pluginDir: string,
   hooksJson: unknown,
   result: PluginValidationResult
 ): Promise<void> {

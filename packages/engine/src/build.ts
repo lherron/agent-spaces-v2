@@ -12,9 +12,9 @@ import { rm } from 'node:fs/promises'
 import { join } from 'node:path'
 
 import {
+  LOCK_FILENAME,
   type LockFile,
   type SpaceKey,
-  LOCK_FILENAME,
   lockFileExists,
   readLockJson,
 } from '@agent-spaces/core'

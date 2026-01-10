@@ -17,11 +17,12 @@ describe('listTree', () => {
     const entries = await listTree('HEAD', '', { cwd: projectRoot })
     expect(entries.length).toBeGreaterThan(0)
     // Check structure of entries
-    const entry = entries[0]!
-    expect(entry.mode).toBeDefined()
-    expect(entry.type).toBeDefined()
-    expect(entry.oid).toBeDefined()
-    expect(entry.path).toBeDefined()
+    const entry = entries[0]
+    expect(entry).toBeDefined()
+    expect(entry?.mode).toBeDefined()
+    expect(entry?.type).toBeDefined()
+    expect(entry?.oid).toBeDefined()
+    expect(entry?.path).toBeDefined()
   })
 
   it('should list entries in a subdirectory', async () => {

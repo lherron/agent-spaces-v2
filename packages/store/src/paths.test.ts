@@ -27,12 +27,12 @@ describe('getAspHome', () => {
     if (originalEnv !== undefined) {
       process.env['ASP_HOME'] = originalEnv
     } else {
-      delete process.env['ASP_HOME']
+      process.env['ASP_HOME'] = undefined
     }
   })
 
   it('should return default when ASP_HOME not set', () => {
-    delete process.env['ASP_HOME']
+    process.env['ASP_HOME'] = undefined
     expect(getAspHome()).toBe(join(homedir(), '.asp'))
   })
 
@@ -53,7 +53,7 @@ describe('path functions', () => {
     if (originalEnv !== undefined) {
       process.env['ASP_HOME'] = originalEnv
     } else {
-      delete process.env['ASP_HOME']
+      process.env['ASP_HOME'] = undefined
     }
   })
 

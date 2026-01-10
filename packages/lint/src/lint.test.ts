@@ -124,7 +124,11 @@ describe('lint', () => {
 
     // Check sorting
     for (let i = 1; i < warnings.length; i++) {
-      expect(warnings[i]!.code >= warnings[i - 1]!.code).toBe(true)
+      const current = warnings[i]
+      const previous = warnings[i - 1]
+      if (current && previous) {
+        expect(current.code >= previous.code).toBe(true)
+      }
     }
   })
 })
