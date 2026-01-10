@@ -188,7 +188,7 @@
 - [x] `tests/management.test.ts` - Test add, remove, upgrade commands (8 tests)
 - [x] `tests/utility.test.ts` - Test diff, explain, list, doctor, gc commands (18 tests)
 
-**Test Summary**: 54 passing integration tests, 0 skipped
+**Test Summary**: 55 passing integration tests, 0 skipped
 
 ---
 
@@ -228,6 +228,17 @@
 
 ---
 
+## Features Added (v0.0.34)
+
+### Manager Space Auto-Install
+- `asp repo init` now automatically installs the `agent-spaces-manager` space
+- Creates initial commit with all manager space files
+- Tags the space as `space/agent-spaces-manager/v1.0.0`
+- Updates dist-tags.json with stable and latest pointing to v1.0.0
+- Use `--no-manager` flag to skip installation (for testing or custom setups)
+
+---
+
 ## Known Issues
 
 ### Lint Configuration
@@ -239,10 +250,10 @@
 - All integration tests passing. Previously skipped "exits with claude exit code" test is now fixed by adding `env` option to RunOptions to pass env vars to subprocess.
 
 ### Version Tags
-- Current git tag is `v0.0.33`
+- Current git tag is `v0.0.34`
 
 ### Test Coverage
-- Total tests: 469 passing (415 package tests + 54 integration tests)
+- Total tests: 470 passing (415 package tests + 55 integration tests)
 - Added tests for critical modules: atomic.ts (26), locks.ts (18), snapshot.ts (18), invoke.ts (21)
 - Added config parser tests: lock-json.ts (39), space-toml.ts (33), targets-toml.ts (30)
 - Fixed proper-lockfile error handling in locks.ts
@@ -263,6 +274,7 @@ These features are mentioned in specs but not yet implemented:
 - [x] `--strict-mcp-config` flag support - Already implemented via `claude.args` passthrough in asp-targets.toml
 - [x] Global lock persistence - Global mode now persists pins to `$ASP_HOME/global-lock.json`
 - [x] `asp repo gc` command - Repository-level garbage collection (runs git gc, prunes store/cache)
+- [x] `asp repo init` installs manager space - Now automatically installs agent-spaces-manager space with --no-manager flag to skip
 
 **Low Priority (Marked Optional in Spec):**
 - [ ] `asp ui` command - Optional repo management UI
