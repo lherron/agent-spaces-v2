@@ -87,20 +87,24 @@ export async function listVersionTags(
 }
 
 /**
- * Resolve an exact version to a commit.
+ * Resolve an exact version to a VersionInfo.
  */
 export async function resolveExactVersion(
   spaceId: SpaceId,
   version: string,
   options: GitTagOptions
-): Promise<CommitSha | null> {
+): Promise<VersionInfo | null> {
   // Normalize version
   const normalizedVersion = version.startsWith('v') ? version.slice(1) : version
   const tagName = `space/${spaceId}/v${normalizedVersion}`
 
   try {
     const commit = await getTagCommit(tagName, { cwd: options.cwd })
-    return asCommitSha(commit)
+    return {
+      tag: tagName,
+      version: normalizedVersion,
+      commit: asCommitSha(commit),
+    }
   } catch {
     return null
   }

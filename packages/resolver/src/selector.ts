@@ -125,14 +125,7 @@ async function resolveSemverSelector(
 
   if (exact) {
     // Exact version match
-    const commit = await resolveExactVersion(spaceId, range, options)
-    if (commit !== null) {
-      versionInfo = {
-        tag: `space/${spaceId}/v${range}`,
-        version: range,
-        commit,
-      }
-    }
+    versionInfo = await resolveExactVersion(spaceId, range, options)
   } else {
     // Range match - find highest satisfying version
     versionInfo = await resolveSemverRange(spaceId, range, options)
