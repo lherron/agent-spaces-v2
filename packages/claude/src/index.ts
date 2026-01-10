@@ -30,6 +30,7 @@ export {
   buildClaudeArgs,
   type ClaudeInvocationResult,
   type ClaudeInvokeOptions,
+  type SpawnClaudeOptions,
 } from './invoke.js'
 
 // Validation

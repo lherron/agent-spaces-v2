@@ -26,6 +26,7 @@ import {
 import {
   type ClaudeInvocationResult,
   type ClaudeInvokeOptions,
+  type SpawnClaudeOptions,
   detectClaude,
   invokeClaude,
   spawnClaude,
@@ -106,7 +107,8 @@ async function executeClaude(
 ): Promise<ClaudeExecutionResult> {
   if (options.interactive !== false) {
     // Interactive mode - spawn with inherited stdio
-    const { proc } = await spawnClaude(invokeOptions)
+    const spawnOptions: SpawnClaudeOptions = { ...invokeOptions, inheritStdio: true }
+    const { proc } = await spawnClaude(spawnOptions)
     const exitCode = await proc.exited
     return { exitCode }
   }

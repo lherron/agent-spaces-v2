@@ -228,13 +228,21 @@ export async function runClaudePrompt(
 }
 
 /**
+ * Options for spawning Claude as a subprocess.
+ */
+export interface SpawnClaudeOptions extends ClaudeInvokeOptions {
+  /** If true, inherit stdio instead of piping (for interactive use) */
+  inheritStdio?: boolean | undefined
+}
+
+/**
  * Spawn Claude as a subprocess and return the process handle.
  * Use this for long-running or streaming interactions.
  *
  * @param options - Invocation options
  * @returns Bun subprocess handle
  */
-export async function spawnClaude(options: ClaudeInvokeOptions = {}): Promise<{
+export async function spawnClaude(options: SpawnClaudeOptions = {}): Promise<{
   proc: ReturnType<typeof Bun.spawn>
   command: string[]
 }> {
@@ -242,17 +250,19 @@ export async function spawnClaude(options: ClaudeInvokeOptions = {}): Promise<{
   const args = buildClaudeArgs(options)
   const command = [claudePath, ...args]
 
+  const stdio = options.inheritStdio ? 'inherit' : 'pipe'
+
   // Build spawn options, only include cwd if defined
   const spawnOptions: {
     cwd?: string
     env?: Record<string, string | undefined>
-    stdin: 'pipe'
-    stdout: 'pipe'
-    stderr: 'pipe'
+    stdin: 'pipe' | 'inherit'
+    stdout: 'pipe' | 'inherit'
+    stderr: 'pipe' | 'inherit'
   } = {
-    stdin: 'pipe',
-    stdout: 'pipe',
-    stderr: 'pipe',
+    stdin: stdio,
+    stdout: stdio,
+    stderr: stdio,
   }
 
   if (options.cwd !== undefined) {
