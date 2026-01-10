@@ -36,6 +36,8 @@ export interface ClaudeInvokeOptions {
   model?: string | undefined
   /** Permission mode (--permission-mode flag) */
   permissionMode?: string | undefined
+  /** Path to settings source file (--settings-source flag) for isolation */
+  settingsSource?: string | undefined
   /** Additional arguments to pass through */
   args?: string[] | undefined
   /** Working directory for Claude */
@@ -46,6 +48,19 @@ export interface ClaudeInvokeOptions {
   captureOutput?: boolean | undefined
   /** Timeout in milliseconds (default: no timeout for interactive use) */
   timeout?: number | undefined
+}
+
+/**
+ * Quote a string for shell if it contains special characters.
+ * Uses single quotes for safety, escaping any embedded single quotes.
+ */
+function shellQuote(str: string): string {
+  // If string contains no special characters, return as-is
+  if (/^[a-zA-Z0-9_./-]+$/.test(str)) {
+    return str
+  }
+  // Escape single quotes by ending quote, adding escaped quote, starting new quote
+  return `'${str.replace(/'/g, "'\\''")}'`
 }
 
 /**
@@ -79,12 +94,55 @@ export function buildClaudeArgs(options: ClaudeInvokeOptions): string[] {
     args.push('--permission-mode', options.permissionMode)
   }
 
+  // Add settings source for isolation
+  if (options.settingsSource) {
+    args.push('--settings-source', options.settingsSource)
+  }
+
   // Add pass-through arguments
   if (options.args) {
     args.push(...options.args)
   }
 
   return args
+}
+
+/**
+ * Format the full Claude command as a shell-executable string.
+ *
+ * This is useful for --dry-run mode where we want to show the user
+ * exactly what command would be executed, in a copy-pasteable format.
+ *
+ * @param claudePath - Path to the claude binary
+ * @param options - Invocation options
+ * @returns Shell-safe command string
+ *
+ * @example
+ * ```typescript
+ * const command = formatClaudeCommand('/usr/local/bin/claude', {
+ *   pluginDirs: ['/path/to/plugin1', '/path with spaces/plugin2'],
+ *   mcpConfig: '/path/to/mcp.json',
+ * });
+ * // Returns: /usr/local/bin/claude --plugin-dir /path/to/plugin1 --plugin-dir '/path with spaces/plugin2' --mcp-config /path/to/mcp.json
+ * ```
+ */
+export function formatClaudeCommand(claudePath: string, options: ClaudeInvokeOptions): string {
+  const args = buildClaudeArgs(options)
+  const quotedArgs = args.map(shellQuote)
+  return [shellQuote(claudePath), ...quotedArgs].join(' ')
+}
+
+/**
+ * Get the formatted Claude command that would be executed.
+ *
+ * Async version that resolves the Claude path automatically.
+ *
+ * @param options - Invocation options
+ * @returns Shell-safe command string
+ */
+export async function getClaudeCommand(options: ClaudeInvokeOptions): Promise<string> {
+  const claudePath = await getClaudePath()
+  return formatClaudeCommand(claudePath, options)
 }
 
 /**

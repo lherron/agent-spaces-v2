@@ -28,6 +28,8 @@ export {
   runClaudePrompt,
   spawnClaude,
   buildClaudeArgs,
+  formatClaudeCommand,
+  getClaudeCommand,
   type ClaudeInvocationResult,
   type ClaudeInvokeOptions,
   type SpawnClaudeOptions,

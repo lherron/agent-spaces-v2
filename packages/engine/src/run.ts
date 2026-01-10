@@ -28,6 +28,7 @@ import {
   type ClaudeInvokeOptions,
   type SpawnClaudeOptions,
   detectClaude,
+  getClaudeCommand,
   invokeClaude,
   spawnClaude,
 } from '@agent-spaces/claude'
@@ -61,6 +62,10 @@ export interface RunOptions extends ResolveOptions {
   printWarnings?: boolean | undefined
   /** Additional environment variables to pass to Claude subprocess */
   env?: Record<string, string> | undefined
+  /** Dry run mode - print command without executing Claude */
+  dryRun?: boolean | undefined
+  /** Run in isolated mode with empty settings (default: true). Set false to inherit user settings. */
+  isolated?: boolean | undefined
 }
 
 /**
@@ -75,6 +80,8 @@ export interface RunResult {
   exitCode: number
   /** Temporary directory used (if not cleaned up) */
   tempDir?: string | undefined
+  /** Full Claude command (for dry-run mode) */
+  command?: string | undefined
 }
 
 /**
@@ -84,6 +91,17 @@ async function createTempDir(aspHome: string): Promise<string> {
   const paths = new PathResolver({ aspHome })
   await mkdir(paths.temp, { recursive: true })
   return mkdtemp(join(paths.temp, 'run-'))
+}
+
+/**
+ * Create an isolated settings file for Claude.
+ * This ensures Claude runs without inheriting user's global settings.
+ */
+async function createIsolatedSettings(tempDir: string): Promise<string> {
+  const settingsPath = join(tempDir, 'isolated-settings.json')
+  // Empty settings object - Claude will use defaults
+  await writeFile(settingsPath, '{}', 'utf-8')
+  return settingsPath
 }
 
 // ============================================================================
@@ -96,6 +114,7 @@ async function createTempDir(aspHome: string): Promise<string> {
 interface ClaudeExecutionResult {
   exitCode: number
   invocation?: ClaudeInvocationResult | undefined
+  command?: string | undefined
 }
 
 /**
@@ -103,8 +122,24 @@ interface ClaudeExecutionResult {
  */
 async function executeClaude(
   invokeOptions: ClaudeInvokeOptions,
-  options: { interactive?: boolean | undefined; prompt?: string | undefined }
+  options: {
+    interactive?: boolean | undefined
+    prompt?: string | undefined
+    dryRun?: boolean | undefined
+  }
 ): Promise<ClaudeExecutionResult> {
+  // In dry-run mode, just get the command and return
+  if (options.dryRun) {
+    // Include prompt args in the command if present
+    const promptArgs = options.prompt ? ['--print', options.prompt] : []
+    const fullOptions = {
+      ...invokeOptions,
+      args: [...(invokeOptions.args ?? []), ...promptArgs],
+    }
+    const command = await getClaudeCommand(fullOptions)
+    return { exitCode: 0, command }
+  }
+
   if (options.interactive !== false) {
     // Interactive mode - spawn with inherited stdio
     const spawnOptions: SpawnClaudeOptions = { ...invokeOptions, inheritStdio: true }
@@ -214,22 +249,27 @@ export async function run(targetName: string, options: RunOptions): Promise<RunR
     const manifest = await loadProjectManifest(options.projectPath)
     const claudeOptions = getEffectiveClaudeOptions(manifest, targetName)
 
+    // Create isolated settings if isolation is enabled (default: true)
+    const isolated = options.isolated !== false
+    const settingsSource = isolated ? await createIsolatedSettings(tempDir) : undefined
+
     // Build Claude invocation options
     const invokeOptions: ClaudeInvokeOptions = {
       pluginDirs: buildResult.pluginDirs,
       mcpConfig: buildResult.mcpConfigPath,
       model: claudeOptions.model,
       permissionMode: claudeOptions.permission_mode,
+      settingsSource,
       cwd: options.cwd ?? options.projectPath,
       args: [...(claudeOptions.args ?? []), ...(options.extraArgs ?? [])],
       env: options.env,
     }
 
     // Execute Claude
-    const { exitCode, invocation } = await executeClaude(invokeOptions, options)
+    const { exitCode, invocation, command } = await executeClaude(invokeOptions, options)
 
-    // Cleanup if requested (default for non-interactive)
-    const shouldCleanup = options.cleanup ?? !options.interactive
+    // Cleanup if requested (default for non-interactive, always for dry-run)
+    const shouldCleanup = options.dryRun || (options.cleanup ?? !options.interactive)
     if (shouldCleanup) {
       await cleanupTempDir(tempDir)
     }
@@ -239,6 +279,7 @@ export async function run(targetName: string, options: RunOptions): Promise<RunR
       invocation,
       exitCode,
       tempDir: shouldCleanup ? undefined : tempDir,
+      command,
     }
   } catch (error) {
     await cleanupTempDir(tempDir)
@@ -300,6 +341,10 @@ export interface GlobalRunOptions {
   printWarnings?: boolean | undefined
   /** Additional environment variables */
   env?: Record<string, string> | undefined
+  /** Dry run mode - print command without executing Claude */
+  dryRun?: boolean | undefined
+  /** Run in isolated mode with empty settings (default: true). Set false to inherit user settings. */
+  isolated?: boolean | undefined
 }
 
 /**
@@ -397,20 +442,25 @@ export async function runGlobalSpace(
     warnings = await lint(lintContext)
     printWarnings(warnings, options.printWarnings !== false)
 
+    // Create isolated settings if isolation is enabled (default: true)
+    const isolated = options.isolated !== false
+    const settingsSource = isolated ? await createIsolatedSettings(tempDir) : undefined
+
     // Build Claude invocation options
     const invokeOptions: ClaudeInvokeOptions = {
       pluginDirs,
       mcpConfig: mcpConfigPath,
+      settingsSource,
       cwd: options.cwd ?? process.cwd(),
       args: options.extraArgs,
       env: options.env,
     }
 
     // Execute Claude
-    const { exitCode, invocation } = await executeClaude(invokeOptions, options)
+    const { exitCode, invocation, command } = await executeClaude(invokeOptions, options)
 
-    // Cleanup
-    const shouldCleanup = options.cleanup ?? !options.interactive
+    // Cleanup (always for dry-run)
+    const shouldCleanup = options.dryRun || (options.cleanup ?? !options.interactive)
     if (shouldCleanup) {
       await cleanupTempDir(tempDir)
     }
@@ -425,6 +475,7 @@ export async function runGlobalSpace(
       invocation,
       exitCode,
       tempDir: shouldCleanup ? undefined : tempDir,
+      command,
     }
   } catch (error) {
     await cleanupTempDir(tempDir)
@@ -501,20 +552,25 @@ export async function runLocalSpace(
     warnings = await lint(lintContext)
     printWarnings(warnings, options.printWarnings !== false)
 
+    // Create isolated settings if isolation is enabled (default: true)
+    const isolated = options.isolated !== false
+    const settingsSource = isolated ? await createIsolatedSettings(tempDir) : undefined
+
     // Build Claude invocation options
     const invokeOptions: ClaudeInvokeOptions = {
       pluginDirs,
       mcpConfig: mcpConfigPath,
+      settingsSource,
       cwd: options.cwd ?? spacePath,
       args: options.extraArgs,
       env: options.env,
     }
 
     // Execute Claude
-    const { exitCode, invocation } = await executeClaude(invokeOptions, options)
+    const { exitCode, invocation, command } = await executeClaude(invokeOptions, options)
 
-    // Cleanup
-    const shouldCleanup = options.cleanup ?? !options.interactive
+    // Cleanup (always for dry-run)
+    const shouldCleanup = options.dryRun || (options.cleanup ?? !options.interactive)
     if (shouldCleanup) {
       await cleanupTempDir(tempDir)
     }
@@ -539,6 +595,7 @@ export async function runLocalSpace(
       invocation,
       exitCode,
       tempDir: shouldCleanup ? undefined : tempDir,
+      command,
     }
   } catch (error) {
     await cleanupTempDir(tempDir)
