@@ -98,6 +98,80 @@ function getPluginName(space: SpaceLintData): string {
   return space.manifest.plugin?.name ?? String(space.manifest.id)
 }
 
+// ============================================================================
+// W202 Helpers
+// ============================================================================
+
+/**
+ * Build command map from all spaces in context.
+ */
+async function buildCommandMap(spaces: SpaceLintData[]): Promise<Map<string, SpaceLintData[]>> {
+  const commandToSpaces = new Map<string, SpaceLintData[]>()
+
+  for (const space of spaces) {
+    const commands = await getCommandNames(space.pluginPath)
+    for (const command of commands) {
+      const existing = commandToSpaces.get(command) ?? []
+      existing.push(space)
+      commandToSpaces.set(command, existing)
+    }
+  }
+
+  return commandToSpaces
+}
+
+/**
+ * Create a warning for an unqualified command reference.
+ */
+function createUnqualifiedCommandWarning(
+  command: string,
+  providingSpaces: SpaceLintData[],
+  space: SpaceLintData,
+  agentFile: string
+): LintWarning {
+  const suggestions = providingSpaces.map((s) => `/${getPluginName(s)}:${command}`).join(' or ')
+
+  return {
+    code: WARNING_CODES.AGENT_COMMAND_NAMESPACE,
+    message:
+      `Agent references unqualified command '/${command}' which is provided by a plugin Space. ` +
+      `Use fully-qualified form (${suggestions}) for reliable agent command resolution.`,
+    severity: 'warning',
+    spaceKey: space.key,
+    path: agentFile,
+    details: {
+      command,
+      unqualifiedRef: `/${command}`,
+      providingSpaces: providingSpaces.map((s) => String(s.manifest.id)),
+      suggestedForms: providingSpaces.map((s) => `/${getPluginName(s)}:${command}`),
+    },
+  }
+}
+
+/**
+ * Scan a single agent file for unqualified command references.
+ */
+async function scanAgentFile(
+  agentFile: string,
+  space: SpaceLintData,
+  commandToSpaces: Map<string, SpaceLintData[]>,
+  warnings: LintWarning[]
+): Promise<void> {
+  try {
+    const content = await readFile(agentFile, 'utf-8')
+    const unqualifiedCommands = findUnqualifiedCommands(content)
+
+    for (const command of unqualifiedCommands) {
+      const providingSpaces = commandToSpaces.get(command)
+      if (providingSpaces && providingSpaces.length > 0) {
+        warnings.push(createUnqualifiedCommandWarning(command, providingSpaces, space, agentFile))
+      }
+    }
+  } catch {
+    // Skip unreadable files
+  }
+}
+
 /**
  * W202: Detect unqualified command references in agent docs.
  */
@@ -105,17 +179,7 @@ export async function checkAgentCommandNamespace(context: LintContext): Promise<
   const warnings: LintWarning[] = []
 
   // Build a map of command name -> list of spaces that define it
-  const commandToSpaces = new Map<string, SpaceLintData[]>()
-
-  for (const space of context.spaces) {
-    const commands = await getCommandNames(space.pluginPath)
-
-    for (const command of commands) {
-      const spaces = commandToSpaces.get(command) ?? []
-      spaces.push(space)
-      commandToSpaces.set(command, spaces)
-    }
-  }
+  const commandToSpaces = await buildCommandMap(context.spaces)
 
   // If no commands defined, nothing to check
   if (commandToSpaces.size === 0) {
@@ -125,42 +189,8 @@ export async function checkAgentCommandNamespace(context: LintContext): Promise<
   // Scan all agent files in all spaces
   for (const space of context.spaces) {
     const agentFiles = await getAgentFiles(space.pluginPath)
-
     for (const agentFile of agentFiles) {
-      try {
-        const content = await readFile(agentFile, 'utf-8')
-        const unqualifiedCommands = findUnqualifiedCommands(content)
-
-        for (const command of unqualifiedCommands) {
-          const providingSpaces = commandToSpaces.get(command)
-
-          // Only warn if the command is provided by one of the composed spaces
-          if (providingSpaces !== undefined && providingSpaces.length > 0) {
-            // Build suggestion with qualified names
-            const suggestions = providingSpaces
-              .map((s) => `/${getPluginName(s)}:${command}`)
-              .join(' or ')
-
-            warnings.push({
-              code: WARNING_CODES.AGENT_COMMAND_NAMESPACE,
-              message:
-                `Agent references unqualified command '/${command}' which is provided by a plugin Space. ` +
-                `Use fully-qualified form (${suggestions}) for reliable agent command resolution.`,
-              severity: 'warning',
-              spaceKey: space.key,
-              path: agentFile,
-              details: {
-                command,
-                unqualifiedRef: `/${command}`,
-                providingSpaces: providingSpaces.map((s) => String(s.manifest.id)),
-                suggestedForms: providingSpaces.map((s) => `/${getPluginName(s)}:${command}`),
-              },
-            })
-          }
-        }
-      } catch {
-        // Skip unreadable files
-      }
+      await scanAgentFile(agentFile, space, commandToSpaces, warnings)
     }
   }
 

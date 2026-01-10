@@ -1,6 +1,6 @@
 # Implementation Plan: Fix Cognitive Complexity Lint Warnings
 
-**Status:** 49 warnings (down from 62, reduced by refactoring CLI commands)
+**Status:** 0 complexity warnings remaining (down from 62)
 
 ---
 
@@ -60,57 +60,69 @@
 
 ---
 
-## Priority 3: Validation Refactoring
+## Priority 3: Validation Refactoring (COMPLETE)
 
-- [ ] **Refactor `packages/resolver/src/validator.ts`**
-  - [ ] Extract `validateSpaceRefs(refs, errorCode, context)` - dedupe lines 52-70 & 105-122
-  - [ ] Split `validateClosure` into 4 focused functions
+- [x] **Refactor `packages/resolver/src/validator.ts`** (17, 23, 23 → 0)
+  - [x] Extract `validateSpaceRefs(refs, errorCode, context)` - dedupe validation
+  - [x] Extract `validateTarget()` - single target validation
+  - [x] Extract `validateClosureRoots()`, `validateClosureLoadOrder()`, `validateClosureDeps()`, `validateLoadOrderDependencies()` - closure validation
 
-- [ ] **Refactor `packages/claude/src/validate.ts`** (48, 34)
-  - [ ] Extract `validatePluginDirectory(dir)` - directory existence check
-  - [ ] Extract `validatePluginJson(dir, json)` - plugin.json structure validation
-  - [ ] Extract `validateComponentPaths(dir, manifest)` - component path checks
-  - [ ] Extract `validateHooksDirectory(dir)` - hooks/ validation
-  - [ ] Split `validateHooksJson` - separate config vs hooks array validation
-
----
-
-## Priority 4: Other Functions
-
-- [ ] **Refactor `packages/git/src/repo.ts`** (34)
-  - [ ] Split `getStatus` - Extract `parseBranchLine()` and `parseStatusLine()`
-
-- [ ] **Refactor `packages/engine/src/explain.ts`** (20)
-  - [ ] Split `formatExplainText` - Extract `formatSpaceExplanation(space)`
-
-- [ ] **Refactor `packages/engine/src/run.ts`** (19, 21, 18)
-  - [ ] `run`, `runGlobalSpace`, `runLocalSpace` - minor extraction
-
-- [ ] **Refactor `packages/engine/src/install.ts`** (16)
-  - [ ] `installNeeded` - just over limit, may not need changes
-
-- [ ] **Refactor `packages/lint/src/rules/W202-agent-command-namespace.ts`** (19)
-  - [ ] `checkAgentCommandNamespace` - extract pattern matching
+- [x] **Refactor `packages/claude/src/validate.ts`** (48, 34 → 0)
+  - [x] Extract `checkIsDirectory(pluginDir)` - directory existence check
+  - [x] Extract `loadPluginJson(pluginDir)` - plugin.json loading with typed result
+  - [x] Extract `validatePluginName()`, `validatePluginVersion()` - field validation
+  - [x] Extract `validateComponentPaths()` - component path checks
+  - [x] Extract `checkHookCommandPath()`, `validateSingleHookConfig()`, `validateHooksJsonContent()`, `validateHooksDirectory()` - hooks validation
 
 ---
 
-## Priority 5: Test Utilities (Low Priority)
+## Priority 4: Other Functions (COMPLETE)
 
-- [ ] **`packages/core/src/config/space-toml.test.ts`** - `toToml` (30)
-  - Option A: Add `// biome-ignore` (acceptable for test utilities)
-  - Option B: Use TOML serialization library
+- [x] **Refactor `packages/git/src/repo.ts`** (34 → 0)
+  - [x] Extract `parseBranchLine()` - branch line parsing
+  - [x] Extract `categorizeFile()`, `parseStatusLines()` - status line parsing
 
-- [ ] **`packages/core/src/config/targets-toml.test.ts`** - `toToml` (29)
-  - Same options as above
+- [x] **Refactor `packages/engine/src/explain.ts`** (20 → 0)
+  - [x] Extract `formatSpaceText(space)` - single space formatting
+  - [x] Extract `formatTargetText(name, target)` - single target formatting
+
+- [x] **Refactor `packages/engine/src/run.ts`** (19, 21, 18 → 0)
+  - [x] Extract `executeClaude()` - Claude invocation helper
+  - [x] Extract `cleanupTempDir()` - temp directory cleanup
+  - [x] Extract `printWarnings()` - warning output helper
+
+- [x] **Refactor `packages/engine/src/install.ts`** (16 → 0)
+  - [x] Extract `composeArraysMatch()` - compose array comparison
+
+- [x] **Refactor `packages/lint/src/rules/W202-agent-command-namespace.ts`** (19 → 0)
+  - [x] Extract `buildCommandMap()` - command map building
+  - [x] Extract `createUnqualifiedCommandWarning()` - warning creation
+  - [x] Extract `scanAgentFile()` - single file scanning
+
+- [x] **Refactor `packages/resolver/src/lock-generator.ts`** (23 → 0)
+  - [x] Extract `buildResolvedFromSelector()` - selector string building
+  - [x] Extract `buildSpaceEntry()` - space entry building
+  - [x] Extract `buildTargetEntry()` - target entry building
+  - [x] Extract `collectSpacesAndIntegrities()` - space collection with integrity
+
+---
+
+## Priority 5: Test Utilities (HANDLED)
+
+- [x] **`packages/core/src/config/space-toml.test.ts`** - `toToml` (30)
+  - Added `// biome-ignore` comment (acceptable for test utilities)
+
+- [x] **`packages/core/src/config/targets-toml.test.ts`** - `toToml` (29)
+  - Added `// biome-ignore` comment (acceptable for test utilities)
 
 ---
 
 ## Verification
 
 After each priority block:
-1. `bun run typecheck` - no type errors
-2. `bun run test` - all tests pass
-3. `bun run lint` - verify complexity reduction
+1. `bun run typecheck` - no type errors ✅
+2. `bun run test` - all tests pass ✅
+3. `bun run lint` - verify complexity reduction ✅
 4. Manual smoke test of affected commands
 
 ---
@@ -118,32 +130,23 @@ After each priority block:
 ## Progress Summary
 
 - **Before:** 62 warnings
-- **After Priority 1 & 2 (CLI complete):** 49 warnings (reduced by 13)
-- CLI commands refactored (all at 0 complexity warnings now):
-  - `build.ts`: 26 → 0
-  - `list.ts`: 28 → 0
-  - `remove.ts`: 17 → 0
-  - `upgrade.ts`: 19 → 0
-  - `repo/gc.ts`: 22 → 0
-  - `repo/init.ts`: 20 → 0
-  - `repo/publish.ts`: 21 → 0
-  - `repo/tags.ts`: 36 → 0
-  - Plus previous: `diff.ts`, `doctor.ts`, `lint.ts`, `repo/status.ts`, `run.ts` (CLI)
+- **After all refactoring:** 0 complexity warnings
 
 ### Key Approach
-Created `packages/cli/src/helpers.ts` with shared utilities that multiple commands use:
-- `getProjectContext()` - consolidated project context resolution
-- `handleCliError()` - standardized error handling
-- `logInvocationOutput()` - stdout/stderr logging
-- `formatCheckResults()` / `outputDoctorSummary()` - doctor output helpers
-- `getStatusIcon()` / `getStatusColor()` - status display helpers
+Created helper functions that extract focused, single-responsibility logic from complex functions. Key patterns used:
+- Result types (success/error discriminated unions) for loading operations
+- Pure functions for parsing and formatting
+- Separate validation functions for different concerns
+- Shared helpers for common operations (cleanup, warning output, etc.)
 
-### Remaining Complexity Warnings (12 total)
-- `packages/claude/src/validate.ts`: 48, 34 (2 warnings)
-- `packages/engine/src/run.ts`: 19, 21, 18 (3 warnings)
-- `packages/git/src/repo.ts`: 34 (1 warning)
-- `packages/engine/src/explain.ts`: 20 (1 warning)
-- `packages/resolver/src/lock-generator.ts`: 23 (1 warning)
-- `packages/lint/src/rules/W202-agent-command-namespace.ts`: 19 (1 warning)
-- `packages/engine/src/install.ts`: 16 (1 warning)
-- Test utilities (low priority): `space-toml.test.ts` (30), `targets-toml.test.ts` (29)
+### Files Refactored
+1. `packages/cli/src/helpers.ts` - Shared CLI utilities
+2. `packages/cli/src/commands/*.ts` - All CLI commands
+3. `packages/claude/src/validate.ts` - Plugin validation
+4. `packages/git/src/repo.ts` - Git status parsing
+5. `packages/resolver/src/validator.ts` - Manifest validation
+6. `packages/resolver/src/lock-generator.ts` - Lock file generation
+7. `packages/engine/src/run.ts` - Run orchestration
+8. `packages/engine/src/explain.ts` - Explain formatting
+9. `packages/engine/src/install.ts` - Install logic
+10. `packages/lint/src/rules/W202-agent-command-namespace.ts` - Lint rule

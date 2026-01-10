@@ -212,6 +212,20 @@ export async function install(options: InstallOptions): Promise<InstallResult> {
   }
 }
 
+// ============================================================================
+// Install Need Helpers
+// ============================================================================
+
+/**
+ * Check if two compose arrays match.
+ */
+function composeArraysMatch(manifestCompose: string[], lockCompose: string[]): boolean {
+  if (manifestCompose.length !== lockCompose.length) {
+    return false
+  }
+  return manifestCompose.every((ref, i) => ref === lockCompose[i])
+}
+
 /**
  * Check if install is needed (lock out of date).
  *
@@ -236,32 +250,19 @@ export async function installNeeded(options: InstallOptions): Promise<boolean> {
 
   for (const name of targetNames) {
     const target = manifest.targets[name]
-    if (!target) {
-      // Target doesn't exist in manifest (shouldn't happen but be safe)
-      continue
-    }
+    if (!target) continue
 
     const lockTarget = existingLock.targets[name]
     if (!lockTarget) {
-      // Target not in lock file, install needed
       return true
     }
 
-    // Compare compose arrays
     const manifestCompose = target.compose ?? []
     const lockCompose = lockTarget.compose ?? []
-
-    if (manifestCompose.length !== lockCompose.length) {
+    if (!composeArraysMatch(manifestCompose, lockCompose)) {
       return true
-    }
-
-    for (let i = 0; i < manifestCompose.length; i++) {
-      if (manifestCompose[i] !== lockCompose[i]) {
-        return true
-      }
     }
   }
 
-  // All targets match, no install needed
   return false
 }

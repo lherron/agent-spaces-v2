@@ -241,6 +241,52 @@ export async function explain(options: ExplainOptions): Promise<ExplainResult> {
   }
 }
 
+// ============================================================================
+// Text Formatting Helpers
+// ============================================================================
+
+/**
+ * Format a single space for text output.
+ */
+function formatSpaceText(space: SpaceInfo, lines: string[]): void {
+  const version = space.pluginVersion ? `@${space.pluginVersion}` : ''
+  const storeStatus = space.inStore ? '' : ' [NOT IN STORE]'
+  lines.push(`    ${space.pluginName}${version}${storeStatus}`)
+  lines.push(`      Key: ${space.key}`)
+  lines.push(`      Commit: ${space.commit.slice(0, 12)}`)
+  if (space.resolvedFrom?.selector) {
+    lines.push(`      Selector: ${space.resolvedFrom.selector}`)
+  }
+  if (space.deps.length > 0) {
+    lines.push(`      Deps: ${space.deps.join(', ')}`)
+  }
+}
+
+/**
+ * Format a single target for text output.
+ */
+function formatTargetText(name: string, target: TargetExplanation, lines: string[]): void {
+  lines.push(`Target: ${name}`)
+  lines.push(`  Compose: ${target.compose.join(', ')}`)
+  lines.push(`  Env hash: ${target.envHash.slice(0, 16)}...`)
+  lines.push('')
+  lines.push('  Load order:')
+
+  for (const space of target.spaces) {
+    formatSpaceText(space, lines)
+  }
+
+  if (target.warnings.length > 0) {
+    lines.push('')
+    lines.push('  Warnings:')
+    for (const warning of target.warnings) {
+      lines.push(`    [${warning.code}] ${warning.message}`)
+    }
+  }
+
+  lines.push('')
+}
+
 /**
  * Format explanation as human-readable text.
  */
@@ -253,35 +299,7 @@ export function formatExplainText(result: ExplainResult): string {
   lines.push('')
 
   for (const [name, target] of Object.entries(result.targets)) {
-    lines.push(`Target: ${name}`)
-    lines.push(`  Compose: ${target.compose.join(', ')}`)
-    lines.push(`  Env hash: ${target.envHash.slice(0, 16)}...`)
-    lines.push('')
-    lines.push('  Load order:')
-
-    for (const space of target.spaces) {
-      const version = space.pluginVersion ? `@${space.pluginVersion}` : ''
-      const storeStatus = space.inStore ? '' : ' [NOT IN STORE]'
-      lines.push(`    ${space.pluginName}${version}${storeStatus}`)
-      lines.push(`      Key: ${space.key}`)
-      lines.push(`      Commit: ${space.commit.slice(0, 12)}`)
-      if (space.resolvedFrom?.selector) {
-        lines.push(`      Selector: ${space.resolvedFrom.selector}`)
-      }
-      if (space.deps.length > 0) {
-        lines.push(`      Deps: ${space.deps.join(', ')}`)
-      }
-    }
-
-    if (target.warnings.length > 0) {
-      lines.push('')
-      lines.push('  Warnings:')
-      for (const warning of target.warnings) {
-        lines.push(`    [${warning.code}] ${warning.message}`)
-      }
-    }
-
-    lines.push('')
+    formatTargetText(name, target, lines)
   }
 
   return lines.join('\n')

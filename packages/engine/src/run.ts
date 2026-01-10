@@ -85,6 +85,63 @@ async function createTempDir(aspHome: string): Promise<string> {
   return mkdtemp(join(paths.temp, 'run-'))
 }
 
+// ============================================================================
+// Claude Execution Helpers
+// ============================================================================
+
+/**
+ * Result from executing Claude.
+ */
+interface ClaudeExecutionResult {
+  exitCode: number
+  invocation?: ClaudeInvocationResult | undefined
+}
+
+/**
+ * Execute Claude in either interactive or non-interactive mode.
+ */
+async function executeClaude(
+  invokeOptions: ClaudeInvokeOptions,
+  options: { interactive?: boolean | undefined; prompt?: string | undefined }
+): Promise<ClaudeExecutionResult> {
+  if (options.interactive !== false) {
+    // Interactive mode - spawn with inherited stdio
+    const { proc } = await spawnClaude(invokeOptions)
+    const exitCode = await proc.exited
+    return { exitCode }
+  }
+
+  // Non-interactive mode - capture output
+  const promptArgs = options.prompt ? ['--print', options.prompt] : []
+  const invocation = await invokeClaude({
+    ...invokeOptions,
+    args: [...(invokeOptions.args ?? []), ...promptArgs],
+    captureOutput: true,
+  })
+  return { exitCode: invocation.exitCode, invocation }
+}
+
+/**
+ * Cleanup a temporary directory, ignoring errors.
+ */
+async function cleanupTempDir(tempDir: string): Promise<void> {
+  try {
+    await rm(tempDir, { recursive: true, force: true })
+  } catch {
+    // Ignore cleanup errors
+  }
+}
+
+/**
+ * Print lint warnings to console if requested.
+ */
+function printWarnings(warnings: LintWarning[], shouldPrint: boolean): void {
+  if (!shouldPrint || warnings.length === 0) return
+  for (const warning of warnings) {
+    console.warn(`[${warning.code}] ${warning.message}`)
+  }
+}
+
 /**
  * Persist a lock file to the global lock file.
  * Merges with existing global lock if present, adding/updating entries.
@@ -149,11 +206,7 @@ export async function run(targetName: string, options: RunOptions): Promise<RunR
     })
 
     // Print warnings if requested
-    if (options.printWarnings !== false && buildResult.warnings.length > 0) {
-      for (const warning of buildResult.warnings) {
-        console.warn(`[${warning.code}] ${warning.message}`)
-      }
-    }
+    printWarnings(buildResult.warnings, options.printWarnings !== false)
 
     // Load project manifest to get claude options
     const manifest = await loadProjectManifest(options.projectPath)
@@ -170,30 +223,13 @@ export async function run(targetName: string, options: RunOptions): Promise<RunR
       env: options.env,
     }
 
-    let exitCode: number
-    let invocation: ClaudeInvocationResult | undefined
-
-    if (options.interactive !== false) {
-      // Interactive mode - spawn with inherited stdio
-      const { proc } = await spawnClaude(invokeOptions)
-
-      // Wait for process to exit
-      exitCode = await proc.exited
-    } else {
-      // Non-interactive mode - capture output
-      const promptArgs = options.prompt ? ['--print', options.prompt] : []
-      invocation = await invokeClaude({
-        ...invokeOptions,
-        args: [...(invokeOptions.args ?? []), ...promptArgs],
-        captureOutput: true,
-      })
-      exitCode = invocation.exitCode
-    }
+    // Execute Claude
+    const { exitCode, invocation } = await executeClaude(invokeOptions, options)
 
     // Cleanup if requested (default for non-interactive)
     const shouldCleanup = options.cleanup ?? !options.interactive
     if (shouldCleanup) {
-      await rm(tempDir, { recursive: true, force: true })
+      await cleanupTempDir(tempDir)
     }
 
     return {
@@ -203,12 +239,7 @@ export async function run(targetName: string, options: RunOptions): Promise<RunR
       tempDir: shouldCleanup ? undefined : tempDir,
     }
   } catch (error) {
-    // Clean up on error
-    try {
-      await rm(tempDir, { recursive: true, force: true })
-    } catch {
-      // Ignore cleanup errors
-    }
+    await cleanupTempDir(tempDir)
     throw error
   }
 }
@@ -351,23 +382,18 @@ export async function runGlobalSpace(
 
     // Run lint checks
     let warnings: LintWarning[] = []
-    if (options.printWarnings !== false) {
-      const lintData: SpaceLintData[] = closure.loadOrder.map((key, i) => {
-        const space = closure.spaces.get(key)
-        if (!space) throw new Error(`Space not found in closure: ${key}`)
-        return {
-          key,
-          manifest: space.manifest,
-          pluginPath: pluginDirs[i] ?? '',
-        }
-      })
-      const lintContext: LintContext = { spaces: lintData }
-      warnings = await lint(lintContext)
-
-      for (const warning of warnings) {
-        console.warn(`[${warning.code}] ${warning.message}`)
+    const lintData: SpaceLintData[] = closure.loadOrder.map((key, i) => {
+      const space = closure.spaces.get(key)
+      if (!space) throw new Error(`Space not found in closure: ${key}`)
+      return {
+        key,
+        manifest: space.manifest,
+        pluginPath: pluginDirs[i] ?? '',
       }
-    }
+    })
+    const lintContext: LintContext = { spaces: lintData }
+    warnings = await lint(lintContext)
+    printWarnings(warnings, options.printWarnings !== false)
 
     // Build Claude invocation options
     const invokeOptions: ClaudeInvokeOptions = {
@@ -378,28 +404,13 @@ export async function runGlobalSpace(
       env: options.env,
     }
 
-    let exitCode: number
-    let invocation: ClaudeInvocationResult | undefined
-
-    if (options.interactive !== false) {
-      // Interactive mode
-      const { proc } = await spawnClaude(invokeOptions)
-      exitCode = await proc.exited
-    } else {
-      // Non-interactive mode
-      const promptArgs = options.prompt ? ['--print', options.prompt] : []
-      invocation = await invokeClaude({
-        ...invokeOptions,
-        args: [...(invokeOptions.args ?? []), ...promptArgs],
-        captureOutput: true,
-      })
-      exitCode = invocation.exitCode
-    }
+    // Execute Claude
+    const { exitCode, invocation } = await executeClaude(invokeOptions, options)
 
     // Cleanup
     const shouldCleanup = options.cleanup ?? !options.interactive
     if (shouldCleanup) {
-      await rm(tempDir, { recursive: true, force: true })
+      await cleanupTempDir(tempDir)
     }
 
     return {
@@ -414,11 +425,7 @@ export async function runGlobalSpace(
       tempDir: shouldCleanup ? undefined : tempDir,
     }
   } catch (error) {
-    try {
-      await rm(tempDir, { recursive: true, force: true })
-    } catch {
-      // Ignore cleanup errors
-    }
+    await cleanupTempDir(tempDir)
     throw error
   }
 }
@@ -481,21 +488,16 @@ export async function runLocalSpace(
 
     // Run lint checks
     let warnings: LintWarning[] = []
-    if (options.printWarnings !== false) {
-      const lintData: SpaceLintData[] = [
-        {
-          key: spaceKey,
-          manifest,
-          pluginPath: pluginDirs[0] ?? '',
-        },
-      ]
-      const lintContext: LintContext = { spaces: lintData }
-      warnings = await lint(lintContext)
-
-      for (const warning of warnings) {
-        console.warn(`[${warning.code}] ${warning.message}`)
-      }
-    }
+    const lintData: SpaceLintData[] = [
+      {
+        key: spaceKey,
+        manifest,
+        pluginPath: pluginDirs[0] ?? '',
+      },
+    ]
+    const lintContext: LintContext = { spaces: lintData }
+    warnings = await lint(lintContext)
+    printWarnings(warnings, options.printWarnings !== false)
 
     // Build Claude invocation options
     const invokeOptions: ClaudeInvokeOptions = {
@@ -506,26 +508,13 @@ export async function runLocalSpace(
       env: options.env,
     }
 
-    let exitCode: number
-    let invocation: ClaudeInvocationResult | undefined
-
-    if (options.interactive !== false) {
-      const { proc } = await spawnClaude(invokeOptions)
-      exitCode = await proc.exited
-    } else {
-      const promptArgs = options.prompt ? ['--print', options.prompt] : []
-      invocation = await invokeClaude({
-        ...invokeOptions,
-        args: [...(invokeOptions.args ?? []), ...promptArgs],
-        captureOutput: true,
-      })
-      exitCode = invocation.exitCode
-    }
+    // Execute Claude
+    const { exitCode, invocation } = await executeClaude(invokeOptions, options)
 
     // Cleanup
     const shouldCleanup = options.cleanup ?? !options.interactive
     if (shouldCleanup) {
-      await rm(tempDir, { recursive: true, force: true })
+      await cleanupTempDir(tempDir)
     }
 
     // Create a synthetic lock for the result
@@ -550,11 +539,7 @@ export async function runLocalSpace(
       tempDir: shouldCleanup ? undefined : tempDir,
     }
   } catch (error) {
-    try {
-      await rm(tempDir, { recursive: true, force: true })
-    } catch {
-      // Ignore cleanup errors
-    }
+    await cleanupTempDir(tempDir)
     throw error
   }
 }

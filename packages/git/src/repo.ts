@@ -269,6 +269,96 @@ export async function getShortSha(
   return gitExecStdout(['rev-parse', '--short', commitish], options)
 }
 
+// ============================================================================
+// Status Parsing Helpers
+// ============================================================================
+
+/**
+ * Parsed branch information from git status.
+ */
+interface BranchInfo {
+  branch: string | null
+  ahead: number
+  behind: number
+}
+
+/**
+ * Parse the branch line from git status --porcelain -b output.
+ * Format: ## branch...origin/branch [ahead N, behind M]
+ */
+function parseBranchLine(line: string): BranchInfo {
+  const result: BranchInfo = { branch: null, ahead: 0, behind: 0 }
+
+  const branchMatch = line.match(/^## ([^.]+)/)
+  if (branchMatch?.[1]) {
+    result.branch = branchMatch[1] === 'HEAD (no branch)' ? null : branchMatch[1]
+  }
+
+  const aheadMatch = line.match(/ahead (\d+)/)
+  if (aheadMatch?.[1]) {
+    result.ahead = Number.parseInt(aheadMatch[1], 10)
+  }
+
+  const behindMatch = line.match(/behind (\d+)/)
+  if (behindMatch?.[1]) {
+    result.behind = Number.parseInt(behindMatch[1], 10)
+  }
+
+  return result
+}
+
+/**
+ * Parsed file status from git status.
+ */
+interface FileStatusResult {
+  modified: string[]
+  untracked: string[]
+  staged: string[]
+}
+
+/**
+ * Categorize a single file by its status codes.
+ */
+function categorizeFile(
+  indexStatus: string,
+  workTreeStatus: string,
+  filePath: string,
+  result: FileStatusResult
+): void {
+  if (workTreeStatus === '?' || indexStatus === '?') {
+    result.untracked.push(filePath)
+    return
+  }
+  if (indexStatus !== ' ' && indexStatus !== '?') {
+    result.staged.push(filePath)
+  }
+  if (workTreeStatus !== ' ' && workTreeStatus !== '?') {
+    result.modified.push(filePath)
+  }
+}
+
+/**
+ * Parse file status lines from git status --porcelain output.
+ * Each line has format: XY filename
+ * where X is index status and Y is worktree status.
+ */
+function parseStatusLines(lines: string[]): FileStatusResult {
+  const result: FileStatusResult = { modified: [], untracked: [], staged: [] }
+
+  for (const line of lines) {
+    // Skip branch line and lines too short
+    if (line.startsWith('##') || line.length < 3) continue
+
+    // Use charAt which always returns a string (empty string for out of bounds)
+    const indexStatus = line.charAt(0)
+    const workTreeStatus = line.charAt(1)
+    const filePath = line.slice(3)
+    categorizeFile(indexStatus, workTreeStatus, filePath, result)
+  }
+
+  return result
+}
+
 /**
  * Get repository status.
  *
@@ -279,58 +369,30 @@ export async function getStatus(options: { cwd?: string | undefined } = {}): Pro
   // Get porcelain status
   const statusLines = await gitExecLines(['status', '--porcelain', '-b'], options)
 
-  const modified: string[] = []
-  const untracked: string[] = []
-  const staged: string[] = []
-  let branch: string | null = null
-  let ahead = 0
-  let behind = 0
+  // Find and parse the branch line
+  const branchLine = statusLines.find((line) => line.startsWith('##'))
+  const branchInfo = branchLine
+    ? parseBranchLine(branchLine)
+    : { branch: null, ahead: 0, behind: 0 }
 
-  for (const line of statusLines) {
-    if (line.startsWith('##')) {
-      // Branch line: ## branch...origin/branch [ahead N, behind M]
-      const branchMatch = line.match(/^## ([^.]+)/)
-      if (branchMatch?.[1]) {
-        branch = branchMatch[1] === 'HEAD (no branch)' ? null : branchMatch[1]
-      }
-      const aheadMatch = line.match(/ahead (\d+)/)
-      if (aheadMatch?.[1]) {
-        ahead = Number.parseInt(aheadMatch[1], 10)
-      }
-      const behindMatch = line.match(/behind (\d+)/)
-      if (behindMatch?.[1]) {
-        behind = Number.parseInt(behindMatch[1], 10)
-      }
-    } else if (line.length >= 3) {
-      const indexStatus = line[0]
-      const workTreeStatus = line[1]
-      const filePath = line.slice(3)
-
-      if (workTreeStatus === '?' || indexStatus === '?') {
-        untracked.push(filePath)
-      } else {
-        if (indexStatus !== ' ' && indexStatus !== '?') {
-          staged.push(filePath)
-        }
-        if (workTreeStatus !== ' ' && workTreeStatus !== '?') {
-          modified.push(filePath)
-        }
-      }
-    }
-  }
+  // Parse file status lines
+  const fileStatus = parseStatusLines(statusLines)
 
   const head = await getHead(options)
-  const clean = modified.length === 0 && untracked.length === 0 && staged.length === 0
+  const clean =
+    fileStatus.modified.length === 0 &&
+    fileStatus.untracked.length === 0 &&
+    fileStatus.staged.length === 0
 
   return {
     clean,
-    branch,
+    branch: branchInfo.branch,
     head,
-    ahead,
-    behind,
-    modified,
-    untracked,
-    staged,
+    ahead: branchInfo.ahead,
+    behind: branchInfo.behind,
+    modified: fileStatus.modified,
+    untracked: fileStatus.untracked,
+    staged: fileStatus.staged,
   }
 }
 

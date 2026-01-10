@@ -92,6 +92,127 @@ export interface TargetInput {
   closure: ClosureResult
 }
 
+// ============================================================================
+// Lock Generation Helpers
+// ============================================================================
+
+/**
+ * Build the selector string for resolvedFrom field.
+ */
+function buildResolvedFromSelector(resolvedFrom: ResolvedSpace['resolvedFrom']): string {
+  if (resolvedFrom.selector.kind === 'dist-tag') {
+    return resolvedFrom.selector.tag
+  }
+  if (resolvedFrom.selector.kind === 'semver') {
+    return resolvedFrom.selector.range
+  }
+  return `git:${resolvedFrom.selector.sha}`
+}
+
+/**
+ * Build a LockSpaceEntry from a resolved space.
+ */
+function buildSpaceEntry(space: ResolvedSpace, integrity: Sha256Integrity): LockSpaceEntry {
+  const pluginIdentity = derivePluginIdentity(space.manifest)
+
+  const resolvedFrom: ResolvedFrom = {
+    selector: buildResolvedFromSelector(space.resolvedFrom),
+  }
+
+  if (space.resolvedFrom.tag !== undefined) {
+    resolvedFrom.tag = space.resolvedFrom.tag
+  }
+  if (space.resolvedFrom.semver !== undefined) {
+    resolvedFrom.semver = space.resolvedFrom.semver
+  }
+
+  // Build plugin info, only including version if defined
+  const pluginInfo: LockPluginInfo = { name: pluginIdentity.name }
+  if (pluginIdentity.version !== undefined) {
+    pluginInfo.version = pluginIdentity.version
+  }
+
+  return {
+    id: space.id,
+    commit: space.commit,
+    path: space.path,
+    integrity,
+    plugin: pluginInfo,
+    deps: {
+      spaces: space.deps,
+    },
+    resolvedFrom,
+  }
+}
+
+/**
+ * Build a LockTargetEntry from a target input.
+ */
+function buildTargetEntry(
+  target: TargetInput,
+  allSpaces: Map<SpaceKey, ResolvedSpace>,
+  integrities: Map<SpaceKey, Sha256Integrity>
+): LockTargetEntry {
+  // Build env hash data
+  const envHashData = target.closure.loadOrder.map((key) => {
+    const space = allSpaces.get(key)
+    if (!space) throw new Error(`Space not found: ${key}`)
+    const integrity = integrities.get(key)
+    if (!integrity) throw new Error(`Integrity not computed for space: ${key}`)
+    const pluginIdentity = derivePluginIdentity(space.manifest)
+    return {
+      spaceKey: key,
+      integrity,
+      pluginName: pluginIdentity.name,
+    }
+  })
+
+  const envHash = computeEnvHash(envHashData)
+
+  // Compute warnings for this target (W205 plugin name collisions)
+  const warnings = computePluginNameCollisions(target.closure.loadOrder, allSpaces)
+
+  const targetEntry: LockTargetEntry = {
+    compose: target.compose,
+    roots: target.closure.roots,
+    loadOrder: target.closure.loadOrder,
+    envHash,
+  }
+
+  // Only include warnings field if there are warnings
+  if (warnings.length > 0) {
+    targetEntry.warnings = warnings
+  }
+
+  return targetEntry
+}
+
+/**
+ * Collect all unique spaces from targets and compute their integrities.
+ */
+async function collectSpacesAndIntegrities(
+  targets: TargetInput[],
+  options: LockGeneratorOptions
+): Promise<{
+  allSpaces: Map<SpaceKey, ResolvedSpace>
+  integrities: Map<SpaceKey, Sha256Integrity>
+}> {
+  const allSpaces = new Map<SpaceKey, ResolvedSpace>()
+  const integrities = new Map<SpaceKey, Sha256Integrity>()
+
+  for (const target of targets) {
+    for (const [key, space] of target.closure.spaces) {
+      if (!allSpaces.has(key)) {
+        allSpaces.set(key, space)
+        const integrity = await computeIntegrity(space.id, space.commit, options)
+        integrities.set(key, integrity)
+      }
+    }
+  }
+
+  return { allSpaces, integrities }
+}
+
 /**
  * Generate a complete lock file from resolved targets.
  */
@@ -109,97 +230,18 @@ export async function generateLockFile(
   }
 
   // Collect all unique spaces and compute integrities
-  const allSpaces = new Map<SpaceKey, ResolvedSpace>()
-  const integrities = new Map<SpaceKey, Sha256Integrity>()
-
-  for (const target of targets) {
-    for (const [key, space] of target.closure.spaces) {
-      if (!allSpaces.has(key)) {
-        allSpaces.set(key, space)
-        // Compute integrity for each unique space
-        const integrity = await computeIntegrity(space.id, space.commit, options)
-        integrities.set(key, integrity)
-      }
-    }
-  }
+  const { allSpaces, integrities } = await collectSpacesAndIntegrities(targets, options)
 
   // Build space entries
   for (const [key, space] of allSpaces) {
     const integrity = integrities.get(key)
     if (!integrity) throw new Error(`Integrity not computed for space: ${key}`)
-    const pluginIdentity = derivePluginIdentity(space.manifest)
-
-    const resolvedFrom: ResolvedFrom = {
-      selector:
-        space.resolvedFrom.selector.kind === 'dist-tag'
-          ? space.resolvedFrom.selector.tag
-          : space.resolvedFrom.selector.kind === 'semver'
-            ? space.resolvedFrom.selector.range
-            : `git:${space.resolvedFrom.selector.sha}`,
-    }
-
-    if (space.resolvedFrom.tag !== undefined) {
-      resolvedFrom.tag = space.resolvedFrom.tag
-    }
-    if (space.resolvedFrom.semver !== undefined) {
-      resolvedFrom.semver = space.resolvedFrom.semver
-    }
-
-    // Build plugin info, only including version if defined
-    const pluginInfo: LockPluginInfo = { name: pluginIdentity.name }
-    if (pluginIdentity.version !== undefined) {
-      pluginInfo.version = pluginIdentity.version
-    }
-
-    const entry: LockSpaceEntry = {
-      id: space.id,
-      commit: space.commit,
-      path: space.path,
-      integrity,
-      plugin: pluginInfo,
-      deps: {
-        spaces: space.deps,
-      },
-      resolvedFrom,
-    }
-
-    lock.spaces[key] = entry
+    lock.spaces[key] = buildSpaceEntry(space, integrity)
   }
 
   // Build target entries
   for (const target of targets) {
-    // Build env hash data
-    const envHashData = target.closure.loadOrder.map((key) => {
-      const space = allSpaces.get(key)
-      if (!space) throw new Error(`Space not found: ${key}`)
-      const integrity = integrities.get(key)
-      if (!integrity) throw new Error(`Integrity not computed for space: ${key}`)
-      const pluginIdentity = derivePluginIdentity(space.manifest)
-      return {
-        spaceKey: key,
-        integrity,
-        pluginName: pluginIdentity.name,
-      }
-    })
-
-    const envHash = computeEnvHash(envHashData)
-
-    // Compute warnings for this target (W205 plugin name collisions)
-    const warnings = computePluginNameCollisions(target.closure.loadOrder, allSpaces)
-
-    const targetEntry: LockTargetEntry = {
-      compose: target.compose,
-      roots: target.closure.roots,
-      loadOrder: target.closure.loadOrder,
-      envHash,
-    }
-
-    // Only include warnings field if there are warnings
-    if (warnings.length > 0) {
-      targetEntry.warnings = warnings
-    }
-
-    lock.targets[target.name] = targetEntry
+    lock.targets[target.name] = buildTargetEntry(target, allSpaces, integrities)
   }
 
   return lock

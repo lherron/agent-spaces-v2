@@ -33,6 +33,40 @@ export interface ValidationResult {
   errors: ValidationError[]
 }
 
+// ============================================================================
+// Space Ref Validation Helpers
+// ============================================================================
+
+/**
+ * Validate a list of space references.
+ */
+function validateSpaceRefs(
+  refs: string[],
+  errorCode: string,
+  subject: string | undefined,
+  errors: ValidationError[]
+): void {
+  for (const ref of refs) {
+    if (!isSpaceRefString(ref)) {
+      errors.push({
+        code: errorCode,
+        message: `Invalid space reference: ${ref}`,
+        subject,
+      })
+      continue
+    }
+    try {
+      parseSpaceRef(ref)
+    } catch (err) {
+      errors.push({
+        code: errorCode,
+        message: `Failed to parse space reference '${ref}': ${err instanceof Error ? err.message : String(err)}`,
+        subject,
+      })
+    }
+  }
+}
+
 /**
  * Validate a space manifest structure.
  */
@@ -49,31 +83,35 @@ export function validateSpaceManifest(manifest: SpaceManifest): ValidationResult
 
   // Validate space refs in deps
   if (manifest.deps?.spaces) {
-    for (const ref of manifest.deps.spaces) {
-      if (!isSpaceRefString(ref)) {
-        errors.push({
-          code: 'E002',
-          message: `Invalid space reference: ${ref}`,
-          subject: manifest.id,
-        })
-      } else {
-        try {
-          parseSpaceRef(ref)
-        } catch (err) {
-          errors.push({
-            code: 'E002',
-            message: `Failed to parse space reference '${ref}': ${err instanceof Error ? err.message : String(err)}`,
-            subject: manifest.id,
-          })
-        }
-      }
-    }
+    validateSpaceRefs(manifest.deps.spaces, 'E002', manifest.id, errors)
   }
 
   return {
     valid: errors.length === 0,
     errors,
   }
+}
+
+/**
+ * Validate a single target in a project manifest.
+ */
+function validateTarget(
+  name: string,
+  target: ProjectManifest['targets'][string],
+  errors: ValidationError[]
+): void {
+  // Check compose is non-empty
+  if (!target.compose || target.compose.length === 0) {
+    errors.push({
+      code: 'E011',
+      message: `Target '${name}' has empty compose list`,
+      subject: name,
+    })
+    return
+  }
+
+  // Validate each compose ref
+  validateSpaceRefs(target.compose, 'E012', name, errors)
 }
 
 /**
@@ -92,35 +130,7 @@ export function validateProjectManifest(manifest: ProjectManifest): ValidationRe
 
   // Validate each target
   for (const [name, target] of Object.entries(manifest.targets ?? {})) {
-    // Check compose is non-empty
-    if (!target.compose || target.compose.length === 0) {
-      errors.push({
-        code: 'E011',
-        message: `Target '${name}' has empty compose list`,
-        subject: name,
-      })
-    }
-
-    // Validate each compose ref
-    for (const ref of target.compose ?? []) {
-      if (!isSpaceRefString(ref)) {
-        errors.push({
-          code: 'E012',
-          message: `Target '${name}' has invalid space reference: ${ref}`,
-          subject: name,
-        })
-      } else {
-        try {
-          parseSpaceRef(ref)
-        } catch (err) {
-          errors.push({
-            code: 'E012',
-            message: `Target '${name}' failed to parse reference '${ref}': ${err instanceof Error ? err.message : String(err)}`,
-            subject: name,
-          })
-        }
-      }
-    }
+    validateTarget(name, target, errors)
   }
 
   return {
@@ -129,13 +139,14 @@ export function validateProjectManifest(manifest: ProjectManifest): ValidationRe
   }
 }
 
-/**
- * Validate a closure result for structural issues.
- */
-export function validateClosure(closure: ClosureResult): ValidationResult {
-  const errors: ValidationError[] = []
+// ============================================================================
+// Closure Validation Helpers
+// ============================================================================
 
-  // Check all roots are in spaces
+/**
+ * Check all roots are present in the closure spaces.
+ */
+function validateClosureRoots(closure: ClosureResult, errors: ValidationError[]): void {
   for (const root of closure.roots) {
     if (!closure.spaces.has(root)) {
       errors.push({
@@ -145,8 +156,12 @@ export function validateClosure(closure: ClosureResult): ValidationResult {
       })
     }
   }
+}
 
-  // Check all load order entries are in spaces
+/**
+ * Check all load order entries are present in closure spaces.
+ */
+function validateClosureLoadOrder(closure: ClosureResult, errors: ValidationError[]): void {
   for (const key of closure.loadOrder) {
     if (!closure.spaces.has(key)) {
       errors.push({
@@ -156,8 +171,12 @@ export function validateClosure(closure: ClosureResult): ValidationResult {
       })
     }
   }
+}
 
-  // Check all deps are in spaces
+/**
+ * Check all dependencies are present in closure spaces.
+ */
+function validateClosureDeps(closure: ClosureResult, errors: ValidationError[]): void {
   for (const [key, space] of closure.spaces) {
     for (const dep of space.deps) {
       if (!closure.spaces.has(dep)) {
@@ -170,8 +189,12 @@ export function validateClosure(closure: ClosureResult): ValidationResult {
       }
     }
   }
+}
 
-  // Check load order respects dependencies
+/**
+ * Check load order respects dependency ordering.
+ */
+function validateLoadOrderDependencies(closure: ClosureResult, errors: ValidationError[]): void {
   const loadOrderIndex = new Map<SpaceKey, number>()
   closure.loadOrder.forEach((key, index) => {
     loadOrderIndex.set(key, index)
@@ -195,10 +218,76 @@ export function validateClosure(closure: ClosureResult): ValidationResult {
       }
     }
   }
+}
+
+/**
+ * Validate a closure result for structural issues.
+ */
+export function validateClosure(closure: ClosureResult): ValidationResult {
+  const errors: ValidationError[] = []
+
+  validateClosureRoots(closure, errors)
+  validateClosureLoadOrder(closure, errors)
+  validateClosureDeps(closure, errors)
+  validateLoadOrderDependencies(closure, errors)
 
   return {
     valid: errors.length === 0,
     errors,
+  }
+}
+
+// ============================================================================
+// Lock File Validation Helpers
+// ============================================================================
+
+/**
+ * Validate a single target's space references in lock file.
+ */
+function validateLockTarget(
+  targetName: string,
+  target: LockFile['targets'][string],
+  lock: LockFile,
+  errors: ValidationError[]
+): void {
+  for (const key of target.loadOrder) {
+    if (!lock.spaces[key]) {
+      errors.push({
+        code: 'E031',
+        message: `Target '${targetName}' references missing space: ${key}`,
+        subject: targetName,
+        details: { missingSpace: key },
+      })
+    }
+  }
+
+  for (const key of target.roots) {
+    if (!lock.spaces[key]) {
+      errors.push({
+        code: 'E032',
+        message: `Target '${targetName}' has missing root space: ${key}`,
+        subject: targetName,
+        details: { missingSpace: key },
+      })
+    }
+  }
+}
+
+/**
+ * Validate space dependency references in lock file.
+ */
+function validateLockSpaceDeps(lock: LockFile, errors: ValidationError[]): void {
+  for (const [key, space] of Object.entries(lock.spaces)) {
+    for (const dep of space.deps.spaces) {
+      if (!lock.spaces[dep]) {
+        errors.push({
+          code: 'E033',
+          message: `Space '${key}' references missing dependency: ${dep}`,
+          subject: key,
+          details: { missingDependency: dep },
+        })
+      }
+    }
   }
 }
 
@@ -216,44 +305,13 @@ export function validateLockFile(lock: LockFile): ValidationResult {
     })
   }
 
-  // Check all spaces in targets exist
+  // Validate all targets
   for (const [targetName, target] of Object.entries(lock.targets)) {
-    for (const key of target.loadOrder) {
-      if (!lock.spaces[key]) {
-        errors.push({
-          code: 'E031',
-          message: `Target '${targetName}' references missing space: ${key}`,
-          subject: targetName,
-          details: { missingSpace: key },
-        })
-      }
-    }
-
-    for (const key of target.roots) {
-      if (!lock.spaces[key]) {
-        errors.push({
-          code: 'E032',
-          message: `Target '${targetName}' has missing root space: ${key}`,
-          subject: targetName,
-          details: { missingSpace: key },
-        })
-      }
-    }
+    validateLockTarget(targetName, target, lock, errors)
   }
 
-  // Check deps reference valid spaces
-  for (const [key, space] of Object.entries(lock.spaces)) {
-    for (const dep of space.deps.spaces) {
-      if (!lock.spaces[dep]) {
-        errors.push({
-          code: 'E033',
-          message: `Space '${key}' references missing dependency: ${dep}`,
-          subject: key,
-          details: { missingDependency: dep },
-        })
-      }
-    }
-  }
+  // Validate space dependencies
+  validateLockSpaceDeps(lock, errors)
 
   return {
     valid: errors.length === 0,
