@@ -13,6 +13,8 @@ import { ClaudeInvocationError } from '@agent-spaces/core'
 import { clearClaudeCache } from './detect.js'
 import {
   buildClaudeArgs,
+  formatClaudeCommand,
+  getClaudeCommand,
   invokeClaude,
   invokeClaudeOrThrow,
   runClaudePrompt,
@@ -82,6 +84,103 @@ describe('buildClaudeArgs', () => {
       '--print',
       'hello',
     ])
+  })
+})
+
+describe('formatClaudeCommand', () => {
+  test('formats basic command', () => {
+    const command = formatClaudeCommand('/usr/local/bin/claude', {})
+    expect(command).toBe('/usr/local/bin/claude')
+  })
+
+  test('formats command with plugin dirs', () => {
+    const command = formatClaudeCommand('/usr/local/bin/claude', {
+      pluginDirs: ['/path/to/plugin1', '/path/to/plugin2'],
+    })
+    expect(command).toBe(
+      '/usr/local/bin/claude --plugin-dir /path/to/plugin1 --plugin-dir /path/to/plugin2'
+    )
+  })
+
+  test('formats command with all options', () => {
+    const command = formatClaudeCommand('/usr/local/bin/claude', {
+      pluginDirs: ['/plugin1'],
+      mcpConfig: '/mcp.json',
+      model: 'opus',
+      permissionMode: 'full',
+    })
+    expect(command).toBe(
+      '/usr/local/bin/claude --plugin-dir /plugin1 --mcp-config /mcp.json --model opus --permission-mode full'
+    )
+  })
+
+  test('quotes paths with spaces', () => {
+    const command = formatClaudeCommand('/usr/local/bin/claude', {
+      pluginDirs: ['/path with spaces/plugin'],
+    })
+    expect(command).toBe("/usr/local/bin/claude --plugin-dir '/path with spaces/plugin'")
+  })
+
+  test('quotes paths with special characters', () => {
+    const command = formatClaudeCommand('/usr/local/bin/claude', {
+      pluginDirs: ['/path$with/special'],
+    })
+    expect(command).toBe("/usr/local/bin/claude --plugin-dir '/path$with/special'")
+  })
+
+  test('escapes single quotes in paths', () => {
+    const command = formatClaudeCommand('/usr/local/bin/claude', {
+      pluginDirs: ["/path'with/quote"],
+    })
+    // Single quote is escaped by: end quote, escaped quote, new quote
+    expect(command).toBe("/usr/local/bin/claude --plugin-dir '/path'\\''with/quote'")
+  })
+
+  test('quotes claude path with spaces', () => {
+    const command = formatClaudeCommand('/usr/local/bin/claude code', {})
+    expect(command).toBe("'/usr/local/bin/claude code'")
+  })
+})
+
+describe('getClaudeCommand', () => {
+  let tmpDir: string
+  let mockClaudePath: string
+  let originalEnv: string | undefined
+
+  beforeAll(async () => {
+    tmpDir = join(tmpdir(), `getcommand-test-${Date.now()}`)
+    await mkdir(tmpDir, { recursive: true })
+    mockClaudePath = join(tmpDir, 'mock-claude')
+    originalEnv = process.env['ASP_CLAUDE_PATH']
+  })
+
+  beforeEach(async () => {
+    clearClaudeCache()
+    // Create a mock claude binary
+    await writeFile(mockClaudePath, '#!/bin/bash\nexit 0\n')
+    await chmod(mockClaudePath, 0o755)
+    process.env['ASP_CLAUDE_PATH'] = mockClaudePath
+  })
+
+  afterEach(() => {
+    if (originalEnv !== undefined) {
+      process.env['ASP_CLAUDE_PATH'] = originalEnv
+    } else {
+      process.env['ASP_CLAUDE_PATH'] = undefined
+    }
+    clearClaudeCache()
+  })
+
+  afterAll(async () => {
+    await rm(tmpDir, { recursive: true, force: true })
+  })
+
+  test('resolves claude path and formats command', async () => {
+    const command = await getClaudeCommand({
+      pluginDirs: ['/plugin1'],
+    })
+    expect(command).toContain(mockClaudePath)
+    expect(command).toContain('--plugin-dir /plugin1')
   })
 })
 

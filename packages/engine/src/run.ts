@@ -64,8 +64,8 @@ export interface RunOptions extends ResolveOptions {
   env?: Record<string, string> | undefined
   /** Dry run mode - print command without executing Claude */
   dryRun?: boolean | undefined
-  /** Run in isolated mode with empty settings (default: true). Set false to inherit user settings. */
-  isolated?: boolean | undefined
+  /** Setting sources for Claude: null = inherit all, undefined = default (isolated), '' = isolated, string = specific sources */
+  settingSources?: string | null | undefined
 }
 
 /**
@@ -94,11 +94,26 @@ async function createTempDir(aspHome: string): Promise<string> {
 }
 
 /**
- * Get setting sources value for isolation.
- * Empty string means no settings are loaded from user/project/local sources.
+ * Resolve setting sources value for Claude invocation.
+ *
+ * @param settingSources - Value from options:
+ *   - null: inherit all settings (don't pass --setting-sources)
+ *   - undefined: default to isolated mode
+ *   - '': isolated mode (pass --setting-sources "")
+ *   - 'user,project': specific sources to inherit
+ * @returns Value to pass to Claude, or undefined to omit the flag
  */
-function getIsolatedSettingSources(): string {
-  return ''
+function resolveSettingSources(settingSources: string | null | undefined): string | undefined {
+  // null means "inherit all" - don't pass the flag
+  if (settingSources === null) {
+    return undefined
+  }
+  // undefined means use default (isolated)
+  if (settingSources === undefined) {
+    return ''
+  }
+  // Otherwise pass the specified value
+  return settingSources
 }
 
 // ============================================================================
@@ -246,9 +261,8 @@ export async function run(targetName: string, options: RunOptions): Promise<RunR
     const manifest = await loadProjectManifest(options.projectPath)
     const claudeOptions = getEffectiveClaudeOptions(manifest, targetName)
 
-    // Create isolated settings if isolation is enabled (default: true)
-    const isolated = options.isolated !== false
-    const settingSources = isolated ? getIsolatedSettingSources() : undefined
+    // Resolve setting sources (null = inherit all, undefined = isolated, string = specific)
+    const settingSources = resolveSettingSources(options.settingSources)
 
     // Build Claude invocation options
     const invokeOptions: ClaudeInvokeOptions = {
@@ -340,8 +354,8 @@ export interface GlobalRunOptions {
   env?: Record<string, string> | undefined
   /** Dry run mode - print command without executing Claude */
   dryRun?: boolean | undefined
-  /** Run in isolated mode with empty settings (default: true). Set false to inherit user settings. */
-  isolated?: boolean | undefined
+  /** Setting sources for Claude: null = inherit all, undefined = default (isolated), '' = isolated, string = specific sources */
+  settingSources?: string | null | undefined
 }
 
 /**
@@ -439,9 +453,8 @@ export async function runGlobalSpace(
     warnings = await lint(lintContext)
     printWarnings(warnings, options.printWarnings !== false)
 
-    // Create isolated settings if isolation is enabled (default: true)
-    const isolated = options.isolated !== false
-    const settingSources = isolated ? getIsolatedSettingSources() : undefined
+    // Resolve setting sources (null = inherit all, undefined = isolated, string = specific)
+    const settingSources = resolveSettingSources(options.settingSources)
 
     // Build Claude invocation options
     const invokeOptions: ClaudeInvokeOptions = {
@@ -549,9 +562,8 @@ export async function runLocalSpace(
     warnings = await lint(lintContext)
     printWarnings(warnings, options.printWarnings !== false)
 
-    // Create isolated settings if isolation is enabled (default: true)
-    const isolated = options.isolated !== false
-    const settingSources = isolated ? getIsolatedSettingSources() : undefined
+    // Resolve setting sources (null = inherit all, undefined = isolated, string = specific)
+    const settingSources = resolveSettingSources(options.settingSources)
 
     // Build Claude invocation options
     const invokeOptions: ClaudeInvokeOptions = {
