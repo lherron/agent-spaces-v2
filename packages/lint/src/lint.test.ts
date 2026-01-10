@@ -124,7 +124,7 @@ describe('lint', () => {
 
     // Check sorting
     for (let i = 1; i < warnings.length; i++) {
-      expect(warnings[i]?.code >= warnings[i - 1]?.code).toBe(true)
+      expect(warnings[i]!.code >= warnings[i - 1]!.code).toBe(true)
     }
   })
 })

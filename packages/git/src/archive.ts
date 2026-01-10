@@ -121,7 +121,7 @@ export async function extractTreeToTemp(
   options: ArchiveOptions = {}
 ): Promise<string> {
   const tmpDir = join(
-    process.env.TMPDIR || '/tmp',
+    process.env['TMPDIR'] || '/tmp',
     `asp-extract-${Date.now()}-${Math.random().toString(36).slice(2)}`
   )
   await extractTree(commitish, srcPath, tmpDir, options)

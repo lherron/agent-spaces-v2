@@ -5,10 +5,14 @@
  * manifests, abstracting the resolver package's lower-level APIs.
  */
 
+import * as path from 'node:path'
+
 import {
   type LockFile,
   type ProjectManifest,
   type TargetDefinition,
+  LOCK_FILENAME,
+  TARGETS_FILENAME,
   getTarget,
   lockFileExists,
   readLockJson,
@@ -70,15 +74,17 @@ export function getRegistryPath(options: ResolveOptions): string {
  * Load project manifest from a directory.
  */
 export async function loadProjectManifest(projectPath: string): Promise<ProjectManifest> {
-  return readTargetsToml(projectPath)
+  const targetsPath = path.join(projectPath, TARGETS_FILENAME)
+  return readTargetsToml(targetsPath)
 }
 
 /**
  * Load lock file if it exists.
  */
 export async function loadLockFileIfExists(projectPath: string): Promise<LockFile | null> {
-  if (await lockFileExists(projectPath)) {
-    return readLockJson(projectPath)
+  const lockPath = path.join(projectPath, LOCK_FILENAME)
+  if (await lockFileExists(lockPath)) {
+    return readLockJson(lockPath)
   }
   return null
 }

@@ -11,7 +11,13 @@
 import { rm } from 'node:fs/promises'
 import { join } from 'node:path'
 
-import { type LockFile, type SpaceKey, lockFileExists, readLockJson } from '@agent-spaces/core'
+import {
+  type LockFile,
+  type SpaceKey,
+  LOCK_FILENAME,
+  lockFileExists,
+  readLockJson,
+} from '@agent-spaces/core'
 
 import { getLoadOrderEntries } from '@agent-spaces/core'
 
@@ -78,8 +84,9 @@ export async function build(targetName: string, options: BuildOptions): Promise<
 
   // Ensure we have a lock file
   let lock: LockFile
-  if (await lockFileExists(options.projectPath)) {
-    lock = await readLockJson(options.projectPath)
+  const lockPath = join(options.projectPath, LOCK_FILENAME)
+  if (await lockFileExists(lockPath)) {
+    lock = await readLockJson(lockPath)
   } else if (options.autoInstall !== false) {
     // Run install to generate lock
     const installResult = await install({
@@ -153,7 +160,8 @@ export async function build(targetName: string, options: BuildOptions): Promise<
  * Build all targets in a project.
  */
 export async function buildAll(options: BuildOptions): Promise<Map<string, BuildResult>> {
-  const lock = await readLockJson(options.projectPath)
+  const lockPath = join(options.projectPath, LOCK_FILENAME)
+  const lock = await readLockJson(lockPath)
   const results = new Map<string, BuildResult>()
 
   for (const targetName of Object.keys(lock.targets)) {

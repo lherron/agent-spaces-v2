@@ -94,8 +94,8 @@ describe('summarize', () => {
     ]
     const summary = summarize(warnings)
     expect(summary.total).toBe(3)
-    expect(summary.bySeverity.warning).toBe(2)
-    expect(summary.bySeverity.info).toBe(1)
+    expect(summary.bySeverity['warning']).toBe(2)
+    expect(summary.bySeverity['info']).toBe(1)
   })
 
   it('should count warnings by code', () => {
@@ -105,7 +105,7 @@ describe('summarize', () => {
       createWarning({ code: 'W203' }),
     ]
     const summary = summarize(warnings)
-    expect(summary.byCode.W201).toBe(2)
-    expect(summary.byCode.W203).toBe(1)
+    expect(summary.byCode['W201']).toBe(2)
+    expect(summary.byCode['W203']).toBe(1)
   })
 })

@@ -5,11 +5,14 @@
  * of resolved targets, including load order, dependencies, and warnings.
  */
 
+import { join } from 'node:path'
+
 import {
   type LockFile,
   type LockSpaceEntry,
   type LockTargetEntry,
   type SpaceKey,
+  LOCK_FILENAME,
   lockFileExists,
   readLockJson,
 } from '@agent-spaces/core'
@@ -207,12 +210,13 @@ async function explainTarget(
  */
 export async function explain(options: ExplainOptions): Promise<ExplainResult> {
   // Check for lock file
-  if (!(await lockFileExists(options.projectPath))) {
+  const lockPath = join(options.projectPath, LOCK_FILENAME)
+  if (!(await lockFileExists(lockPath))) {
     throw new Error('No lock file found. Run install first.')
   }
 
   // Load lock file
-  const lock = await readLockJson(options.projectPath)
+  const lock = await readLockJson(lockPath)
 
   // Determine which targets to explain
   const targetNames = options.targets ?? Object.keys(lock.targets)

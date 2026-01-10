@@ -23,8 +23,8 @@ describe('composeMcpConfigs', () => {
 
     const composed = composeMcpConfigs([config1, config2])
     expect(Object.keys(composed.mcpServers).length).toBe(2)
-    expect(composed.mcpServers.server1?.command).toBe('cmd1')
-    expect(composed.mcpServers.server2?.command).toBe('cmd2')
+    expect(composed.mcpServers['server1']?.command).toBe('cmd1')
+    expect(composed.mcpServers['server2']?.command).toBe('cmd2')
   })
 
   it('should override earlier configs with later ones', () => {
@@ -40,7 +40,7 @@ describe('composeMcpConfigs', () => {
     }
 
     const composed = composeMcpConfigs([config1, config2])
-    expect(composed.mcpServers.server1?.command).toBe('override')
+    expect(composed.mcpServers['server1']?.command).toBe('override')
   })
 
   it('should handle empty configs', () => {
