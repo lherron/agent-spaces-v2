@@ -291,6 +291,16 @@ Fixed spec inconsistency for `asp add` and `asp remove` command syntax:
 
 ---
 
+## Spec Alignment (v0.0.43)
+
+Updated spec path hierarchies to match implementation simplifications:
+- **Store paths**: Changed from `$ASP_HOME/store/spaces/sha256/<hash>/` to simpler `$ASP_HOME/store/<hash>/`
+- **Cache paths**: Changed from `$ASP_HOME/cache/materialized/<key>/<pluginName>/` to simpler `$ASP_HOME/cache/<key>/`
+- Implementation uses flatter hierarchy for simplicity - the integrity hash (without sha256: prefix) is used directly as directory name
+- Updated all three spec files (SPEC.md, SCHEMAS.md, PLAN.md) for consistency
+
+---
+
 ## Known Issues
 
 ### Spec Alignment Status
@@ -306,7 +316,7 @@ Fixed spec inconsistency for `asp add` and `asp remove` command syntax:
 - All integration tests passing. Previously skipped "exits with claude exit code" test is now fixed by adding `env` option to RunOptions to pass env vars to subprocess.
 
 ### Version Tags
-- Current git tag is `v0.0.42`
+- Current git tag is `v0.0.43`
 
 ### Test Coverage
 - Total tests: 470 passing (415 package tests + 55 integration tests)
