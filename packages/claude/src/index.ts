@@ -14,29 +14,29 @@
 
 // Detection
 export {
-	detectClaude,
-	findClaudeBinary,
-	getClaudePath,
-	clearClaudeCache,
-	type ClaudeInfo,
-} from "./detect.js";
+  detectClaude,
+  findClaudeBinary,
+  getClaudePath,
+  clearClaudeCache,
+  type ClaudeInfo,
+} from './detect.js'
 
 // Invocation
 export {
-	invokeClaude,
-	invokeClaudeOrThrow,
-	runClaudePrompt,
-	spawnClaude,
-	buildClaudeArgs,
-	type ClaudeInvocationResult,
-	type ClaudeInvokeOptions,
-} from "./invoke.js";
+  invokeClaude,
+  invokeClaudeOrThrow,
+  runClaudePrompt,
+  spawnClaude,
+  buildClaudeArgs,
+  type ClaudeInvocationResult,
+  type ClaudeInvokeOptions,
+} from './invoke.js'
 
 // Validation
 export {
-	validatePlugin,
-	validatePlugins,
-	checkPluginNameCollisions,
-	validatePluginsWithCollisionCheck,
-	type PluginValidationResult,
-} from "./validate.js";
+  validatePlugin,
+  validatePlugins,
+  checkPluginNameCollisions,
+  validatePluginsWithCollisionCheck,
+  type PluginValidationResult,
+} from './validate.js'

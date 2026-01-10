@@ -2,7 +2,7 @@
 
 ## Current Status
 
-**Completed**: ~65% (6 of 9 packages fully implemented)
+**Completed**: ~75% (7 of 9 packages fully implemented)
 
 ### Packages Status
 
@@ -14,8 +14,8 @@
 | resolver | COMPLETE | ref-parser, dist-tags, git-tags, selector (resolution), closure (DFS postorder), integrity, lock-generator, validator |
 | store | COMPLETE | paths (ASP_HOME), snapshot (extraction/storage), cache (plugin cache), gc (garbage collection) |
 | materializer | COMPLETE | plugin-json, link-components, hooks-builder, mcp-composer, materialize orchestration |
+| lint | COMPLETE | W201-W206 rules, reporter, 30 tests |
 | engine | NOT STARTED | Blocks CLI |
-| lint | NOT STARTED | Blocks engine, CLI |
 | cli | NOT STARTED | Final integration layer |
 
 ---
@@ -90,18 +90,18 @@
 
 ---
 
-## Priority 5: Linting Rules
+## Priority 5: Linting Rules (COMPLETE)
 
-### packages/lint - Warning Detection
-- [ ] `src/rules/W201-command-collision.ts` - Same command in multiple spaces
-- [ ] `src/rules/W203-hook-path-no-plugin-root.ts` - Hook path missing `${CLAUDE_PLUGIN_ROOT}`
-- [ ] `src/rules/W204-invalid-hooks-config.ts` - hooks/ exists but hooks.json missing/invalid
-- [ ] `src/rules/W205-plugin-name-collision.ts` - Two spaces produce same plugin name
-- [ ] `src/rules/W206-non-executable-hook-script.ts` - Hook script not executable
-- [ ] `src/reporter.ts` - Warning output formatter
-- [ ] `src/index.ts` - Public exports
-- [ ] `package.json` - Package setup
-- [ ] Unit tests for each rule
+### packages/lint - Warning Detection (COMPLETE)
+- [x] `src/rules/W201-command-collision.ts` - Same command in multiple spaces
+- [x] `src/rules/W203-hook-path-no-plugin-root.ts` - Hook path missing `${CLAUDE_PLUGIN_ROOT}`
+- [x] `src/rules/W204-invalid-hooks-config.ts` - hooks/ exists but hooks.json missing/invalid
+- [x] `src/rules/W205-plugin-name-collision.ts` - Two spaces produce same plugin name
+- [x] `src/rules/W206-non-executable-hook-script.ts` - Hook script not executable
+- [x] `src/reporter.ts` - Warning output formatter
+- [x] `src/index.ts` - Public exports
+- [x] `package.json` - Package setup
+- [x] Unit tests for each rule (30 tests)
 
 ---
 

@@ -5,17 +5,17 @@
  * They use a deterministic algorithm based on git tree contents.
  */
 
-import { createHash } from "node:crypto";
-import { listTreeRecursive, filterTreeEntries, type TreeEntry } from "@agent-spaces/git";
-import type { SpaceId, CommitSha, Sha256Integrity } from "@agent-spaces/core";
-import { asSha256Integrity } from "@agent-spaces/core";
+import { createHash } from 'node:crypto'
+import type { CommitSha, Sha256Integrity, SpaceId } from '@agent-spaces/core'
+import { asSha256Integrity } from '@agent-spaces/core'
+import { type TreeEntry, filterTreeEntries, listTreeRecursive } from '@agent-spaces/git'
 
 /**
  * Options for integrity hashing.
  */
 export interface IntegrityOptions {
-	/** Working directory (registry repo root) */
-	cwd: string;
+  /** Working directory (registry repo root) */
+  cwd: string
 }
 
 /**
@@ -30,41 +30,41 @@ export interface IntegrityOptions {
  * 5. SHA256 the result
  */
 export async function computeIntegrity(
-	spaceId: SpaceId,
-	commit: CommitSha,
-	options: IntegrityOptions
+  spaceId: SpaceId,
+  commit: CommitSha,
+  options: IntegrityOptions
 ): Promise<Sha256Integrity> {
-	const treePath = `spaces/${spaceId}`;
-	const ref = commit;
+  const treePath = `spaces/${spaceId}`
+  const ref = commit
 
-	// Get all files recursively
-	let entries: TreeEntry[];
-	try {
-		entries = await listTreeRecursive(ref, treePath, { cwd: options.cwd });
-	} catch (err) {
-		// If the tree doesn't exist, return a hash of empty content
-		const hash = createHash("sha256");
-		hash.update("v1\0");
-		return asSha256Integrity(`sha256:${hash.digest("hex")}`);
-	}
+  // Get all files recursively
+  let entries: TreeEntry[]
+  try {
+    entries = await listTreeRecursive(ref, treePath, { cwd: options.cwd })
+  } catch (_err) {
+    // If the tree doesn't exist, return a hash of empty content
+    const hash = createHash('sha256')
+    hash.update('v1\0')
+    return asSha256Integrity(`sha256:${hash.digest('hex')}`)
+  }
 
-	// Filter out ignored paths
-	const filtered = filterTreeEntries(entries);
+  // Filter out ignored paths
+  const filtered = filterTreeEntries(entries)
 
-	// Sort by path (lexicographic)
-	filtered.sort((a, b) => a.path.localeCompare(b.path));
+  // Sort by path (lexicographic)
+  filtered.sort((a, b) => a.path.localeCompare(b.path))
 
-	// Build canonical representation
-	const hash = createHash("sha256");
-	hash.update("v1\0");
+  // Build canonical representation
+  const hash = createHash('sha256')
+  hash.update('v1\0')
 
-	for (const entry of filtered) {
-		// path\0type\0oid\0mode\n
-		hash.update(`${entry.path}\0${entry.type}\0${entry.oid}\0${entry.mode}\n`);
-	}
+  for (const entry of filtered) {
+    // path\0type\0oid\0mode\n
+    hash.update(`${entry.path}\0${entry.type}\0${entry.oid}\0${entry.mode}\n`)
+  }
 
-	const digest = hash.digest("hex");
-	return asSha256Integrity(`sha256:${digest}`);
+  const digest = hash.digest('hex')
+  return asSha256Integrity(`sha256:${digest}`)
 }
 
 /**
@@ -75,32 +75,32 @@ export async function computeIntegrity(
  *   spaceKey + "\0" + integrity + "\0" + pluginName + "\n")
  */
 export function computeEnvHash(
-	loadOrder: Array<{
-		spaceKey: string;
-		integrity: Sha256Integrity;
-		pluginName: string;
-	}>
+  loadOrder: Array<{
+    spaceKey: string
+    integrity: Sha256Integrity
+    pluginName: string
+  }>
 ): Sha256Integrity {
-	const hash = createHash("sha256");
-	hash.update("env-v1\0");
+  const hash = createHash('sha256')
+  hash.update('env-v1\0')
 
-	for (const entry of loadOrder) {
-		hash.update(`${entry.spaceKey}\0${entry.integrity}\0${entry.pluginName}\n`);
-	}
+  for (const entry of loadOrder) {
+    hash.update(`${entry.spaceKey}\0${entry.integrity}\0${entry.pluginName}\n`)
+  }
 
-	const digest = hash.digest("hex");
-	return asSha256Integrity(`sha256:${digest}`);
+  const digest = hash.digest('hex')
+  return asSha256Integrity(`sha256:${digest}`)
 }
 
 /**
  * Verify an integrity hash matches the computed value.
  */
 export async function verifyIntegrity(
-	spaceId: SpaceId,
-	commit: CommitSha,
-	expected: Sha256Integrity,
-	options: IntegrityOptions
+  spaceId: SpaceId,
+  commit: CommitSha,
+  expected: Sha256Integrity,
+  options: IntegrityOptions
 ): Promise<boolean> {
-	const computed = await computeIntegrity(spaceId, commit, options);
-	return computed === expected;
+  const computed = await computeIntegrity(spaceId, commit, options)
+  return computed === expected
 }

@@ -6,7 +6,7 @@
  * out the entire repository.
  */
 
-import { gitExec, gitExecStdout } from "./exec.js";
+import { gitExec, gitExecStdout } from './exec.js'
 
 /**
  * Read file contents at a specific commit.
@@ -30,12 +30,12 @@ import { gitExec, gitExecStdout } from "./exec.js";
  * ```
  */
 export async function showFile(
-	commitish: string,
-	path: string,
-	options: { cwd?: string | undefined } = {}
+  commitish: string,
+  path: string,
+  options: { cwd?: string | undefined } = {}
 ): Promise<string> {
-	// git show <commit>:<path> retrieves file contents
-	return gitExecStdout(["show", `${commitish}:${path}`], options);
+  // git show <commit>:<path> retrieves file contents
+  return gitExecStdout(['show', `${commitish}:${path}`], options)
 }
 
 /**
@@ -55,20 +55,20 @@ export async function showFile(
  * ```
  */
 export async function showFileOrNull(
-	commitish: string,
-	path: string,
-	options: { cwd?: string | undefined } = {}
+  commitish: string,
+  path: string,
+  options: { cwd?: string | undefined } = {}
 ): Promise<string | null> {
-	const result = await gitExec(["show", `${commitish}:${path}`], {
-		...options,
-		ignoreExitCode: true,
-	});
+  const result = await gitExec(['show', `${commitish}:${path}`], {
+    ...options,
+    ignoreExitCode: true,
+  })
 
-	if (result.exitCode !== 0) {
-		return null;
-	}
+  if (result.exitCode !== 0) {
+    return null
+  }
 
-	return result.stdout;
+  return result.stdout
 }
 
 /**
@@ -87,16 +87,16 @@ export async function showFileOrNull(
  * ```
  */
 export async function fileExistsAtCommit(
-	commitish: string,
-	path: string,
-	options: { cwd?: string | undefined } = {}
+  commitish: string,
+  path: string,
+  options: { cwd?: string | undefined } = {}
 ): Promise<boolean> {
-	// Use cat-file -e to check existence (faster than show for just checking)
-	const result = await gitExec(["cat-file", "-e", `${commitish}:${path}`], {
-		...options,
-		ignoreExitCode: true,
-	});
-	return result.exitCode === 0;
+  // Use cat-file -e to check existence (faster than show for just checking)
+  const result = await gitExec(['cat-file', '-e', `${commitish}:${path}`], {
+    ...options,
+    ignoreExitCode: true,
+  })
+  return result.exitCode === 0
 }
 
 /**
@@ -108,20 +108,20 @@ export async function fileExistsAtCommit(
  * @returns Object type string, or null if path doesn't exist
  */
 export async function getObjectType(
-	commitish: string,
-	path: string,
-	options: { cwd?: string | undefined } = {}
-): Promise<"blob" | "tree" | "commit" | "tag" | null> {
-	const result = await gitExec(["cat-file", "-t", `${commitish}:${path}`], {
-		...options,
-		ignoreExitCode: true,
-	});
+  commitish: string,
+  path: string,
+  options: { cwd?: string | undefined } = {}
+): Promise<'blob' | 'tree' | 'commit' | 'tag' | null> {
+  const result = await gitExec(['cat-file', '-t', `${commitish}:${path}`], {
+    ...options,
+    ignoreExitCode: true,
+  })
 
-	if (result.exitCode !== 0) {
-		return null;
-	}
+  if (result.exitCode !== 0) {
+    return null
+  }
 
-	return result.stdout.trim() as "blob" | "tree" | "commit" | "tag";
+  return result.stdout.trim() as 'blob' | 'tree' | 'commit' | 'tag'
 }
 
 /**
@@ -144,12 +144,12 @@ export async function getObjectType(
  * ```
  */
 export async function showJson<T>(
-	commitish: string,
-	path: string,
-	options: { cwd?: string | undefined } = {}
+  commitish: string,
+  path: string,
+  options: { cwd?: string | undefined } = {}
 ): Promise<T> {
-	const content = await showFile(commitish, path, options);
-	return JSON.parse(content) as T;
+  const content = await showFile(commitish, path, options)
+  return JSON.parse(content) as T
 }
 
 /**
@@ -161,18 +161,18 @@ export async function showJson<T>(
  * @returns Parsed JSON object, or null if file doesn't exist or JSON is invalid
  */
 export async function showJsonOrNull<T>(
-	commitish: string,
-	path: string,
-	options: { cwd?: string | undefined } = {}
+  commitish: string,
+  path: string,
+  options: { cwd?: string | undefined } = {}
 ): Promise<T | null> {
-	const content = await showFileOrNull(commitish, path, options);
-	if (content === null) {
-		return null;
-	}
+  const content = await showFileOrNull(commitish, path, options)
+  if (content === null) {
+    return null
+  }
 
-	try {
-		return JSON.parse(content) as T;
-	} catch {
-		return null;
-	}
+  try {
+    return JSON.parse(content) as T
+  } catch {
+    return null
+  }
 }

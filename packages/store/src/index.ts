@@ -11,58 +11,58 @@
 
 // Path management
 export {
-	DEFAULT_ASP_HOME,
-	getAspHome,
-	getRepoPath,
-	getStorePath,
-	getCachePath,
-	getTempPath,
-	getSnapshotPath,
-	getPluginCachePath,
-	getSpacesPath,
-	getSpaceSourcePath,
-	getRegistryMetaPath,
-	getDistTagsPath,
-	ensureDir,
-	ensureAspHome,
-	PathResolver,
-	type PathOptions,
-} from "./paths.js";
+  DEFAULT_ASP_HOME,
+  getAspHome,
+  getRepoPath,
+  getStorePath,
+  getCachePath,
+  getTempPath,
+  getSnapshotPath,
+  getPluginCachePath,
+  getSpacesPath,
+  getSpaceSourcePath,
+  getRegistryMetaPath,
+  getDistTagsPath,
+  ensureDir,
+  ensureAspHome,
+  PathResolver,
+  type PathOptions,
+} from './paths.js'
 
 // Snapshot operations
 export {
-	snapshotExists,
-	getSnapshotMetadata,
-	createSnapshot,
-	verifySnapshot,
-	deleteSnapshot,
-	listSnapshots,
-	getSnapshotSize,
-	type SnapshotMetadata,
-	type SnapshotOptions,
-} from "./snapshot.js";
+  snapshotExists,
+  getSnapshotMetadata,
+  createSnapshot,
+  verifySnapshot,
+  deleteSnapshot,
+  listSnapshots,
+  getSnapshotSize,
+  type SnapshotMetadata,
+  type SnapshotOptions,
+} from './snapshot.js'
 
 // Cache operations
 export {
-	computePluginCacheKey,
-	cacheExists,
-	getCacheMetadata,
-	writeCacheMetadata,
-	deleteCache,
-	listCacheEntries,
-	getCacheSize,
-	getTotalCacheSize,
-	pruneCache,
-	type CacheMetadata,
-	type CacheOptions,
-} from "./cache.js";
+  computePluginCacheKey,
+  cacheExists,
+  getCacheMetadata,
+  writeCacheMetadata,
+  deleteCache,
+  listCacheEntries,
+  getCacheSize,
+  getTotalCacheSize,
+  pruneCache,
+  type CacheMetadata,
+  type CacheOptions,
+} from './cache.js'
 
 // Garbage collection
 export {
-	computeReachableIntegrities,
-	computeReachableCacheKeys,
-	runGC,
-	checkGC,
-	type GCResult,
-	type GCOptions,
-} from "./gc.js";
+  computeReachableIntegrities,
+  computeReachableCacheKeys,
+  runGC,
+  checkGC,
+  type GCResult,
+  type GCOptions,
+} from './gc.js'

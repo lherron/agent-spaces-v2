@@ -9,36 +9,36 @@
  * 4. No file I/O required for the tree structure
  */
 
-import { gitExecLines } from "./exec.js";
+import { gitExecLines } from './exec.js'
 
 /**
  * Entry in a git tree representing a file, directory, or symlink.
  */
 export interface TreeEntry {
-	/** File mode (e.g., "100644" for regular file, "100755" for executable, "120000" for symlink, "040000" for directory) */
-	mode: string;
-	/** Object type: "blob" for files, "tree" for directories, "commit" for submodules */
-	type: "blob" | "tree" | "commit";
-	/** Git object ID (SHA-1 hash) */
-	oid: string;
-	/** Path relative to the tree root */
-	path: string;
+  /** File mode (e.g., "100644" for regular file, "100755" for executable, "120000" for symlink, "040000" for directory) */
+  mode: string
+  /** Object type: "blob" for files, "tree" for directories, "commit" for submodules */
+  type: 'blob' | 'tree' | 'commit'
+  /** Git object ID (SHA-1 hash) */
+  oid: string
+  /** Path relative to the tree root */
+  path: string
 }
 
 /**
  * Parsed mode information.
  */
 export interface ParsedMode {
-	/** Whether the file is executable */
-	isExecutable: boolean;
-	/** Whether the entry is a symlink */
-	isSymlink: boolean;
-	/** Whether the entry is a directory */
-	isDirectory: boolean;
-	/** Whether the entry is a submodule */
-	isSubmodule: boolean;
-	/** Whether the entry is a regular file */
-	isRegularFile: boolean;
+  /** Whether the file is executable */
+  isExecutable: boolean
+  /** Whether the entry is a symlink */
+  isSymlink: boolean
+  /** Whether the entry is a directory */
+  isDirectory: boolean
+  /** Whether the entry is a submodule */
+  isSubmodule: boolean
+  /** Whether the entry is a regular file */
+  isRegularFile: boolean
 }
 
 /**
@@ -48,13 +48,13 @@ export interface ParsedMode {
  * @returns Parsed mode information
  */
 export function parseMode(mode: string): ParsedMode {
-	return {
-		isExecutable: mode === "100755",
-		isSymlink: mode === "120000",
-		isDirectory: mode === "040000" || mode === "40000",
-		isSubmodule: mode === "160000",
-		isRegularFile: mode === "100644" || mode === "100755",
-	};
+  return {
+    isExecutable: mode === '100755',
+    isSymlink: mode === '120000',
+    isDirectory: mode === '040000' || mode === '40000',
+    isSubmodule: mode === '160000',
+    isRegularFile: mode === '100644' || mode === '100755',
+  }
 }
 
 /**
@@ -76,33 +76,33 @@ export function parseMode(mode: string): ParsedMode {
  * ```
  */
 export async function listTree(
-	commitish: string,
-	path: string,
-	options: { cwd?: string | undefined } = {}
+  commitish: string,
+  path: string,
+  options: { cwd?: string | undefined } = {}
 ): Promise<TreeEntry[]> {
-	// Build the tree reference
-	const treeRef = path ? `${commitish}:${path}` : commitish;
+  // Build the tree reference
+  const treeRef = path ? `${commitish}:${path}` : commitish
 
-	// Use ls-tree to list entries
-	// Format: <mode> <type> <oid>\t<path>
-	const lines = await gitExecLines(["ls-tree", treeRef], options);
+  // Use ls-tree to list entries
+  // Format: <mode> <type> <oid>\t<path>
+  const lines = await gitExecLines(['ls-tree', treeRef], options)
 
-	return lines.map((line) => {
-		// Split by tab first to separate path (which may contain spaces)
-		const tabParts = line.split("\t");
-		const metadata = tabParts[0] ?? "";
-		const entryPath = tabParts[1] ?? "";
-		const metaParts = metadata.split(/\s+/);
-		const mode = metaParts[0] ?? "";
-		const type = (metaParts[1] ?? "blob") as "blob" | "tree" | "commit";
-		const oid = metaParts[2] ?? "";
-		return {
-			mode,
-			type,
-			oid,
-			path: entryPath,
-		};
-	});
+  return lines.map((line) => {
+    // Split by tab first to separate path (which may contain spaces)
+    const tabParts = line.split('\t')
+    const metadata = tabParts[0] ?? ''
+    const entryPath = tabParts[1] ?? ''
+    const metaParts = metadata.split(/\s+/)
+    const mode = metaParts[0] ?? ''
+    const type = (metaParts[1] ?? 'blob') as 'blob' | 'tree' | 'commit'
+    const oid = metaParts[2] ?? ''
+    return {
+      mode,
+      type,
+      oid,
+      path: entryPath,
+    }
+  })
 }
 
 /**
@@ -122,31 +122,31 @@ export async function listTree(
  * ```
  */
 export async function listTreeRecursive(
-	commitish: string,
-	path: string,
-	options: { cwd?: string | undefined } = {}
+  commitish: string,
+  path: string,
+  options: { cwd?: string | undefined } = {}
 ): Promise<TreeEntry[]> {
-	// Build the tree reference
-	const treeRef = path ? `${commitish}:${path}` : commitish;
+  // Build the tree reference
+  const treeRef = path ? `${commitish}:${path}` : commitish
 
-	// Use ls-tree -r to list recursively (only blobs, not trees)
-	const lines = await gitExecLines(["ls-tree", "-r", treeRef], options);
+  // Use ls-tree -r to list recursively (only blobs, not trees)
+  const lines = await gitExecLines(['ls-tree', '-r', treeRef], options)
 
-	return lines.map((line) => {
-		const tabParts = line.split("\t");
-		const metadata = tabParts[0] ?? "";
-		const entryPath = tabParts[1] ?? "";
-		const metaParts = metadata.split(/\s+/);
-		const mode = metaParts[0] ?? "";
-		const type = (metaParts[1] ?? "blob") as "blob" | "tree" | "commit";
-		const oid = metaParts[2] ?? "";
-		return {
-			mode,
-			type,
-			oid,
-			path: entryPath,
-		};
-	});
+  return lines.map((line) => {
+    const tabParts = line.split('\t')
+    const metadata = tabParts[0] ?? ''
+    const entryPath = tabParts[1] ?? ''
+    const metaParts = metadata.split(/\s+/)
+    const mode = metaParts[0] ?? ''
+    const type = (metaParts[1] ?? 'blob') as 'blob' | 'tree' | 'commit'
+    const oid = metaParts[2] ?? ''
+    return {
+      mode,
+      type,
+      oid,
+      path: entryPath,
+    }
+  })
 }
 
 /**
@@ -158,30 +158,30 @@ export async function listTreeRecursive(
  * @returns Array of all tree entries (including directories) sorted by path
  */
 export async function listTreeRecursiveWithDirs(
-	commitish: string,
-	path: string,
-	options: { cwd?: string | undefined } = {}
+  commitish: string,
+  path: string,
+  options: { cwd?: string | undefined } = {}
 ): Promise<TreeEntry[]> {
-	const treeRef = path ? `${commitish}:${path}` : commitish;
+  const treeRef = path ? `${commitish}:${path}` : commitish
 
-	// Use ls-tree -r -t to include tree entries
-	const lines = await gitExecLines(["ls-tree", "-r", "-t", treeRef], options);
+  // Use ls-tree -r -t to include tree entries
+  const lines = await gitExecLines(['ls-tree', '-r', '-t', treeRef], options)
 
-	return lines.map((line) => {
-		const tabParts = line.split("\t");
-		const metadata = tabParts[0] ?? "";
-		const entryPath = tabParts[1] ?? "";
-		const metaParts = metadata.split(/\s+/);
-		const mode = metaParts[0] ?? "";
-		const type = (metaParts[1] ?? "blob") as "blob" | "tree" | "commit";
-		const oid = metaParts[2] ?? "";
-		return {
-			mode,
-			type,
-			oid,
-			path: entryPath,
-		};
-	});
+  return lines.map((line) => {
+    const tabParts = line.split('\t')
+    const metadata = tabParts[0] ?? ''
+    const entryPath = tabParts[1] ?? ''
+    const metaParts = metadata.split(/\s+/)
+    const mode = metaParts[0] ?? ''
+    const type = (metaParts[1] ?? 'blob') as 'blob' | 'tree' | 'commit'
+    const oid = metaParts[2] ?? ''
+    return {
+      mode,
+      type,
+      oid,
+      path: entryPath,
+    }
+  })
 }
 
 /**
@@ -199,28 +199,26 @@ export async function listTreeRecursiveWithDirs(
  * ```
  */
 export function filterTreeEntries(
-	entries: TreeEntry[],
-	excludePatterns: string[] = [
-		".git/",
-		".git",
-		".asp/",
-		".asp",
-		"node_modules/",
-		"node_modules",
-		"dist/",
-		"dist",
-	]
+  entries: TreeEntry[],
+  excludePatterns: string[] = [
+    '.git/',
+    '.git',
+    '.asp/',
+    '.asp',
+    'node_modules/',
+    'node_modules',
+    'dist/',
+    'dist',
+  ]
 ): TreeEntry[] {
-	return entries.filter((entry) => {
-		const pathWithSlash = entry.path.endsWith("/")
-			? entry.path
-			: `${entry.path}/`;
-		return !excludePatterns.some(
-			(pattern) =>
-				entry.path === pattern ||
-				entry.path.startsWith(pattern.endsWith("/") ? pattern : `${pattern}/`)
-		);
-	});
+  return entries.filter((entry) => {
+    const _pathWithSlash = entry.path.endsWith('/') ? entry.path : `${entry.path}/`
+    return !excludePatterns.some(
+      (pattern) =>
+        entry.path === pattern ||
+        entry.path.startsWith(pattern.endsWith('/') ? pattern : `${pattern}/`)
+    )
+  })
 }
 
 /**
@@ -232,9 +230,9 @@ export function filterTreeEntries(
  * @throws GitError if OID doesn't exist
  */
 export async function getBlobContent(
-	oid: string,
-	options: { cwd?: string | undefined } = {}
+  oid: string,
+  options: { cwd?: string | undefined } = {}
 ): Promise<string> {
-	const lines = await gitExecLines(["cat-file", "blob", oid], options);
-	return lines.join("\n");
+  const lines = await gitExecLines(['cat-file', 'blob', oid], options)
+  return lines.join('\n')
 }

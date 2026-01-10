@@ -1,0 +1,17 @@
+{
+  "name": "@agent-spaces/lint",
+  "version": "0.1.0",
+  "description": "Warning detection rules for Agent Spaces v2",
+  "type": "module",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "scripts": {
+    "build": "tsc",
+    "test": "bun test",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@agent-spaces/core": "workspace:*",
+    "@agent-spaces/materializer": "workspace:*"
+  }
+}

@@ -1,49 +1,37 @@
-/**
- * Git repository operations for clone, fetch, init, and status.
- *
- * WHY: The CLI needs to manage the registry repository at $ASP_HOME/repo.
- * These operations support:
- * - `asp repo init` - Clone or initialize the registry
- * - `asp repo status` - Check repository state
- * - General repository management
- */
-
-import { access, constants } from "node:fs/promises";
-import { join } from "node:path";
-import { gitExec, gitExecLines, gitExecStdout } from "./exec.js";
+import { gitExec, gitExecLines, gitExecStdout } from './exec.js'
 
 /**
  * Repository status information.
  */
 export interface RepoStatus {
-	/** Whether the repository is clean (no uncommitted changes) */
-	clean: boolean;
-	/** Current branch name */
-	branch: string | null;
-	/** Current HEAD commit SHA */
-	head: string;
-	/** Number of commits ahead of upstream */
-	ahead: number;
-	/** Number of commits behind upstream */
-	behind: number;
-	/** List of modified files */
-	modified: string[];
-	/** List of untracked files */
-	untracked: string[];
-	/** List of staged files */
-	staged: string[];
+  /** Whether the repository is clean (no uncommitted changes) */
+  clean: boolean
+  /** Current branch name */
+  branch: string | null
+  /** Current HEAD commit SHA */
+  head: string
+  /** Number of commits ahead of upstream */
+  ahead: number
+  /** Number of commits behind upstream */
+  behind: number
+  /** List of modified files */
+  modified: string[]
+  /** List of untracked files */
+  untracked: string[]
+  /** List of staged files */
+  staged: string[]
 }
 
 /**
  * Remote information.
  */
 export interface RemoteInfo {
-	/** Remote name (e.g., "origin") */
-	name: string;
-	/** Fetch URL */
-	fetchUrl: string;
-	/** Push URL (usually same as fetch) */
-	pushUrl: string;
+  /** Remote name (e.g., "origin") */
+  name: string
+  /** Fetch URL */
+  fetchUrl: string
+  /** Push URL (usually same as fetch) */
+  pushUrl: string
 }
 
 /**
@@ -53,11 +41,11 @@ export interface RemoteInfo {
  * @returns True if path is inside a git repository
  */
 export async function isGitRepo(path: string): Promise<boolean> {
-	const result = await gitExec(["rev-parse", "--git-dir"], {
-		cwd: path,
-		ignoreExitCode: true,
-	});
-	return result.exitCode === 0;
+  const result = await gitExec(['rev-parse', '--git-dir'], {
+    cwd: path,
+    ignoreExitCode: true,
+  })
+  return result.exitCode === 0
 }
 
 /**
@@ -67,17 +55,17 @@ export async function isGitRepo(path: string): Promise<boolean> {
  * @returns True if path is the repository root
  */
 export async function isRepoRoot(path: string): Promise<boolean> {
-	try {
-		const root = await gitExecStdout(["rev-parse", "--show-toplevel"], {
-			cwd: path,
-		});
-		// Normalize paths for comparison
-		const normalizedPath = path.replace(/\/+$/, "");
-		const normalizedRoot = root.replace(/\/+$/, "");
-		return normalizedPath === normalizedRoot;
-	} catch {
-		return false;
-	}
+  try {
+    const root = await gitExecStdout(['rev-parse', '--show-toplevel'], {
+      cwd: path,
+    })
+    // Normalize paths for comparison
+    const normalizedPath = path.replace(/\/+$/, '')
+    const normalizedRoot = root.replace(/\/+$/, '')
+    return normalizedPath === normalizedRoot
+  } catch {
+    return false
+  }
 }
 
 /**
@@ -88,7 +76,7 @@ export async function isRepoRoot(path: string): Promise<boolean> {
  * @throws GitError if not in a git repository
  */
 export async function getRepoRoot(path: string): Promise<string> {
-	return gitExecStdout(["rev-parse", "--show-toplevel"], { cwd: path });
+  return gitExecStdout(['rev-parse', '--show-toplevel'], { cwd: path })
 }
 
 /**
@@ -105,25 +93,25 @@ export async function getRepoRoot(path: string): Promise<string> {
  * ```
  */
 export async function initRepo(
-	path: string,
-	options: {
-		bare?: boolean | undefined;
-		initialBranch?: string | undefined;
-	} = {}
+  path: string,
+  options: {
+    bare?: boolean | undefined
+    initialBranch?: string | undefined
+  } = {}
 ): Promise<void> {
-	const args = ["init"];
+  const args = ['init']
 
-	if (options.bare) {
-		args.push("--bare");
-	}
+  if (options.bare) {
+    args.push('--bare')
+  }
 
-	if (options.initialBranch) {
-		args.push("-b", options.initialBranch);
-	}
+  if (options.initialBranch) {
+    args.push('-b', options.initialBranch)
+  }
 
-	args.push(path);
+  args.push(path)
 
-	await gitExec(args);
+  await gitExec(args)
 }
 
 /**
@@ -141,31 +129,31 @@ export async function initRepo(
  * ```
  */
 export async function cloneRepo(
-	url: string,
-	destPath: string,
-	options: {
-		branch?: string | undefined;
-		depth?: number | undefined;
-		bare?: boolean | undefined;
-	} = {}
+  url: string,
+  destPath: string,
+  options: {
+    branch?: string | undefined
+    depth?: number | undefined
+    bare?: boolean | undefined
+  } = {}
 ): Promise<void> {
-	const args = ["clone"];
+  const args = ['clone']
 
-	if (options.branch) {
-		args.push("-b", options.branch);
-	}
+  if (options.branch) {
+    args.push('-b', options.branch)
+  }
 
-	if (options.depth !== undefined) {
-		args.push("--depth", String(options.depth));
-	}
+  if (options.depth !== undefined) {
+    args.push('--depth', String(options.depth))
+  }
 
-	if (options.bare) {
-		args.push("--bare");
-	}
+  if (options.bare) {
+    args.push('--bare')
+  }
 
-	args.push(url, destPath);
+  args.push(url, destPath)
 
-	await gitExec(args, { timeout: 300000 }); // 5 minute timeout for clone
+  await gitExec(args, { timeout: 300000 }) // 5 minute timeout for clone
 }
 
 /**
@@ -176,31 +164,31 @@ export async function cloneRepo(
  * @throws GitError if fetch fails
  */
 export async function fetch(
-	remote = "origin",
-	options: {
-		cwd?: string | undefined;
-		prune?: boolean | undefined;
-		tags?: boolean | undefined;
-		all?: boolean | undefined;
-	} = {}
+  remote = 'origin',
+  options: {
+    cwd?: string | undefined
+    prune?: boolean | undefined
+    tags?: boolean | undefined
+    all?: boolean | undefined
+  } = {}
 ): Promise<void> {
-	const args = ["fetch"];
+  const args = ['fetch']
 
-	if (options.all) {
-		args.push("--all");
-	} else {
-		args.push(remote);
-	}
+  if (options.all) {
+    args.push('--all')
+  } else {
+    args.push(remote)
+  }
 
-	if (options.prune) {
-		args.push("--prune");
-	}
+  if (options.prune) {
+    args.push('--prune')
+  }
 
-	if (options.tags) {
-		args.push("--tags");
-	}
+  if (options.tags) {
+    args.push('--tags')
+  }
 
-	await gitExec(args, { cwd: options.cwd, timeout: 120000 }); // 2 minute timeout
+  await gitExec(args, { cwd: options.cwd, timeout: 120000 }) // 2 minute timeout
 }
 
 /**
@@ -212,26 +200,26 @@ export async function fetch(
  * @throws GitError if pull fails
  */
 export async function pull(
-	remote = "origin",
-	branch?: string | undefined,
-	options: {
-		cwd?: string | undefined;
-		rebase?: boolean | undefined;
-	} = {}
+  remote = 'origin',
+  branch?: string | undefined,
+  options: {
+    cwd?: string | undefined
+    rebase?: boolean | undefined
+  } = {}
 ): Promise<void> {
-	const args = ["pull"];
+  const args = ['pull']
 
-	if (options.rebase) {
-		args.push("--rebase");
-	}
+  if (options.rebase) {
+    args.push('--rebase')
+  }
 
-	args.push(remote);
+  args.push(remote)
 
-	if (branch) {
-		args.push(branch);
-	}
+  if (branch) {
+    args.push(branch)
+  }
 
-	await gitExec(args, { cwd: options.cwd, timeout: 120000 });
+  await gitExec(args, { cwd: options.cwd, timeout: 120000 })
 }
 
 /**
@@ -241,19 +229,19 @@ export async function pull(
  * @returns Branch name, or null if in detached HEAD state
  */
 export async function getCurrentBranch(
-	options: { cwd?: string | undefined } = {}
+  options: { cwd?: string | undefined } = {}
 ): Promise<string | null> {
-	const result = await gitExec(
-		["symbolic-ref", "--short", "HEAD"],
-		{ ...options, ignoreExitCode: true }
-	);
+  const result = await gitExec(['symbolic-ref', '--short', 'HEAD'], {
+    ...options,
+    ignoreExitCode: true,
+  })
 
-	if (result.exitCode !== 0) {
-		// Detached HEAD state
-		return null;
-	}
+  if (result.exitCode !== 0) {
+    // Detached HEAD state
+    return null
+  }
 
-	return result.stdout.trim();
+  return result.stdout.trim()
 }
 
 /**
@@ -263,10 +251,8 @@ export async function getCurrentBranch(
  * @returns Full commit SHA
  * @throws GitError if not in a git repository
  */
-export async function getHead(
-	options: { cwd?: string | undefined } = {}
-): Promise<string> {
-	return gitExecStdout(["rev-parse", "HEAD"], options);
+export async function getHead(options: { cwd?: string | undefined } = {}): Promise<string> {
+  return gitExecStdout(['rev-parse', 'HEAD'], options)
 }
 
 /**
@@ -277,10 +263,10 @@ export async function getHead(
  * @returns Short (7 char) commit SHA
  */
 export async function getShortSha(
-	commitish: string,
-	options: { cwd?: string | undefined } = {}
+  commitish: string,
+  options: { cwd?: string | undefined } = {}
 ): Promise<string> {
-	return gitExecStdout(["rev-parse", "--short", commitish], options);
+  return gitExecStdout(['rev-parse', '--short', commitish], options)
 }
 
 /**
@@ -289,68 +275,63 @@ export async function getShortSha(
  * @param options - Options including cwd
  * @returns Detailed status information
  */
-export async function getStatus(
-	options: { cwd?: string | undefined } = {}
-): Promise<RepoStatus> {
-	// Get porcelain status
-	const statusLines = await gitExecLines(
-		["status", "--porcelain", "-b"],
-		options
-	);
+export async function getStatus(options: { cwd?: string | undefined } = {}): Promise<RepoStatus> {
+  // Get porcelain status
+  const statusLines = await gitExecLines(['status', '--porcelain', '-b'], options)
 
-	const modified: string[] = [];
-	const untracked: string[] = [];
-	const staged: string[] = [];
-	let branch: string | null = null;
-	let ahead = 0;
-	let behind = 0;
+  const modified: string[] = []
+  const untracked: string[] = []
+  const staged: string[] = []
+  let branch: string | null = null
+  let ahead = 0
+  let behind = 0
 
-	for (const line of statusLines) {
-		if (line.startsWith("##")) {
-			// Branch line: ## branch...origin/branch [ahead N, behind M]
-			const branchMatch = line.match(/^## ([^.]+)/);
-			if (branchMatch?.[1]) {
-				branch = branchMatch[1] === "HEAD (no branch)" ? null : branchMatch[1];
-			}
-			const aheadMatch = line.match(/ahead (\d+)/);
-			if (aheadMatch?.[1]) {
-				ahead = parseInt(aheadMatch[1], 10);
-			}
-			const behindMatch = line.match(/behind (\d+)/);
-			if (behindMatch?.[1]) {
-				behind = parseInt(behindMatch[1], 10);
-			}
-		} else if (line.length >= 3) {
-			const indexStatus = line[0];
-			const workTreeStatus = line[1];
-			const filePath = line.slice(3);
+  for (const line of statusLines) {
+    if (line.startsWith('##')) {
+      // Branch line: ## branch...origin/branch [ahead N, behind M]
+      const branchMatch = line.match(/^## ([^.]+)/)
+      if (branchMatch?.[1]) {
+        branch = branchMatch[1] === 'HEAD (no branch)' ? null : branchMatch[1]
+      }
+      const aheadMatch = line.match(/ahead (\d+)/)
+      if (aheadMatch?.[1]) {
+        ahead = Number.parseInt(aheadMatch[1], 10)
+      }
+      const behindMatch = line.match(/behind (\d+)/)
+      if (behindMatch?.[1]) {
+        behind = Number.parseInt(behindMatch[1], 10)
+      }
+    } else if (line.length >= 3) {
+      const indexStatus = line[0]
+      const workTreeStatus = line[1]
+      const filePath = line.slice(3)
 
-			if (workTreeStatus === "?" || indexStatus === "?") {
-				untracked.push(filePath);
-			} else {
-				if (indexStatus !== " " && indexStatus !== "?") {
-					staged.push(filePath);
-				}
-				if (workTreeStatus !== " " && workTreeStatus !== "?") {
-					modified.push(filePath);
-				}
-			}
-		}
-	}
+      if (workTreeStatus === '?' || indexStatus === '?') {
+        untracked.push(filePath)
+      } else {
+        if (indexStatus !== ' ' && indexStatus !== '?') {
+          staged.push(filePath)
+        }
+        if (workTreeStatus !== ' ' && workTreeStatus !== '?') {
+          modified.push(filePath)
+        }
+      }
+    }
+  }
 
-	const head = await getHead(options);
-	const clean = modified.length === 0 && untracked.length === 0 && staged.length === 0;
+  const head = await getHead(options)
+  const clean = modified.length === 0 && untracked.length === 0 && staged.length === 0
 
-	return {
-		clean,
-		branch,
-		head,
-		ahead,
-		behind,
-		modified,
-		untracked,
-		staged,
-	};
+  return {
+    clean,
+    branch,
+    head,
+    ahead,
+    behind,
+    modified,
+    untracked,
+    staged,
+  }
 }
 
 /**
@@ -360,32 +341,32 @@ export async function getStatus(
  * @returns Array of remote information
  */
 export async function listRemotes(
-	options: { cwd?: string | undefined } = {}
+  options: { cwd?: string | undefined } = {}
 ): Promise<RemoteInfo[]> {
-	const lines = await gitExecLines(["remote", "-v"], options);
+  const lines = await gitExecLines(['remote', '-v'], options)
 
-	const remotes = new Map<string, RemoteInfo>();
+  const remotes = new Map<string, RemoteInfo>()
 
-	for (const line of lines) {
-		const match = line.match(/^(\S+)\s+(\S+)\s+\((fetch|push)\)$/);
-		if (match) {
-			const name = match[1] ?? "";
-			const url = match[2] ?? "";
-			const type = match[3];
-			let info = remotes.get(name);
-			if (!info) {
-				info = { name, fetchUrl: "", pushUrl: "" };
-				remotes.set(name, info);
-			}
-			if (type === "fetch") {
-				info.fetchUrl = url;
-			} else {
-				info.pushUrl = url;
-			}
-		}
-	}
+  for (const line of lines) {
+    const match = line.match(/^(\S+)\s+(\S+)\s+\((fetch|push)\)$/)
+    if (match) {
+      const name = match[1] ?? ''
+      const url = match[2] ?? ''
+      const type = match[3]
+      let info = remotes.get(name)
+      if (!info) {
+        info = { name, fetchUrl: '', pushUrl: '' }
+        remotes.set(name, info)
+      }
+      if (type === 'fetch') {
+        info.fetchUrl = url
+      } else {
+        info.pushUrl = url
+      }
+    }
+  }
 
-	return Array.from(remotes.values());
+  return Array.from(remotes.values())
 }
 
 /**
@@ -397,11 +378,11 @@ export async function listRemotes(
  * @throws GitError if remote already exists
  */
 export async function addRemote(
-	name: string,
-	url: string,
-	options: { cwd?: string | undefined } = {}
+  name: string,
+  url: string,
+  options: { cwd?: string | undefined } = {}
 ): Promise<void> {
-	await gitExec(["remote", "add", name, url], options);
+  await gitExec(['remote', 'add', name, url], options)
 }
 
 /**
@@ -412,10 +393,10 @@ export async function addRemote(
  * @throws GitError if remote doesn't exist
  */
 export async function removeRemote(
-	name: string,
-	options: { cwd?: string | undefined } = {}
+  name: string,
+  options: { cwd?: string | undefined } = {}
 ): Promise<void> {
-	await gitExec(["remote", "remove", name], options);
+  await gitExec(['remote', 'remove', name], options)
 }
 
 /**
@@ -426,11 +407,11 @@ export async function removeRemote(
  * @param options - Options including cwd
  */
 export async function setRemoteUrl(
-	name: string,
-	url: string,
-	options: { cwd?: string | undefined } = {}
+  name: string,
+  url: string,
+  options: { cwd?: string | undefined } = {}
 ): Promise<void> {
-	await gitExec(["remote", "set-url", name, url], options);
+  await gitExec(['remote', 'set-url', name, url], options)
 }
 
 /**
@@ -441,34 +422,34 @@ export async function setRemoteUrl(
  * @returns Default branch name (e.g., "main" or "master")
  */
 export async function getDefaultBranch(
-	remote = "origin",
-	options: { cwd?: string | undefined } = {}
+  remote = 'origin',
+  options: { cwd?: string | undefined } = {}
 ): Promise<string> {
-	// First try to get from remote HEAD
-	const result = await gitExec(
-		["symbolic-ref", `refs/remotes/${remote}/HEAD`],
-		{ ...options, ignoreExitCode: true }
-	);
+  // First try to get from remote HEAD
+  const result = await gitExec(['symbolic-ref', `refs/remotes/${remote}/HEAD`], {
+    ...options,
+    ignoreExitCode: true,
+  })
 
-	if (result.exitCode === 0) {
-		// refs/remotes/origin/HEAD -> refs/remotes/origin/main
-		const ref = result.stdout.trim();
-		return ref.replace(`refs/remotes/${remote}/`, "");
-	}
+  if (result.exitCode === 0) {
+    // refs/remotes/origin/HEAD -> refs/remotes/origin/main
+    const ref = result.stdout.trim()
+    return ref.replace(`refs/remotes/${remote}/`, '')
+  }
 
-	// Fallback: check for common default branch names
-	for (const branch of ["main", "master"]) {
-		const checkResult = await gitExec(
-			["show-ref", "--verify", `refs/remotes/${remote}/${branch}`],
-			{ ...options, ignoreExitCode: true }
-		);
-		if (checkResult.exitCode === 0) {
-			return branch;
-		}
-	}
+  // Fallback: check for common default branch names
+  for (const branch of ['main', 'master']) {
+    const checkResult = await gitExec(
+      ['show-ref', '--verify', `refs/remotes/${remote}/${branch}`],
+      { ...options, ignoreExitCode: true }
+    )
+    if (checkResult.exitCode === 0) {
+      return branch
+    }
+  }
 
-	// Last resort: return "main"
-	return "main";
+  // Last resort: return "main"
+  return 'main'
 }
 
 /**
@@ -478,21 +459,21 @@ export async function getDefaultBranch(
  * @param options - Checkout options
  */
 export async function checkout(
-	target: string,
-	options: {
-		cwd?: string | undefined;
-		create?: boolean | undefined;
-	} = {}
+  target: string,
+  options: {
+    cwd?: string | undefined
+    create?: boolean | undefined
+  } = {}
 ): Promise<void> {
-	const args = ["checkout"];
+  const args = ['checkout']
 
-	if (options.create) {
-		args.push("-b");
-	}
+  if (options.create) {
+    args.push('-b')
+  }
 
-	args.push(target);
+  args.push(target)
 
-	await gitExec(args, { cwd: options.cwd });
+  await gitExec(args, { cwd: options.cwd })
 }
 
 /**
@@ -503,21 +484,21 @@ export async function checkout(
  * @returns Commit SHA of the new commit
  */
 export async function commit(
-	message: string,
-	options: {
-		cwd?: string | undefined;
-		allowEmpty?: boolean | undefined;
-	} = {}
+  message: string,
+  options: {
+    cwd?: string | undefined
+    allowEmpty?: boolean | undefined
+  } = {}
 ): Promise<string> {
-	const args = ["commit", "-m", message];
+  const args = ['commit', '-m', message]
 
-	if (options.allowEmpty) {
-		args.push("--allow-empty");
-	}
+  if (options.allowEmpty) {
+    args.push('--allow-empty')
+  }
 
-	await gitExec(args, { cwd: options.cwd });
+  await gitExec(args, { cwd: options.cwd })
 
-	return getHead({ cwd: options.cwd });
+  return getHead({ cwd: options.cwd })
 }
 
 /**
@@ -527,10 +508,10 @@ export async function commit(
  * @param options - Options including cwd
  */
 export async function add(
-	paths: string[],
-	options: { cwd?: string | undefined } = {}
+  paths: string[],
+  options: { cwd?: string | undefined } = {}
 ): Promise<void> {
-	await gitExec(["add", ...paths], options);
+  await gitExec(['add', ...paths], options)
 }
 
 /**
@@ -541,29 +522,29 @@ export async function add(
  * @param options - Push options
  */
 export async function push(
-	remote = "origin",
-	branch?: string | undefined,
-	options: {
-		cwd?: string | undefined;
-		setUpstream?: boolean | undefined;
-		force?: boolean | undefined;
-	} = {}
+  remote = 'origin',
+  branch?: string | undefined,
+  options: {
+    cwd?: string | undefined
+    setUpstream?: boolean | undefined
+    force?: boolean | undefined
+  } = {}
 ): Promise<void> {
-	const args = ["push"];
+  const args = ['push']
 
-	if (options.setUpstream) {
-		args.push("-u");
-	}
+  if (options.setUpstream) {
+    args.push('-u')
+  }
 
-	if (options.force) {
-		args.push("--force");
-	}
+  if (options.force) {
+    args.push('--force')
+  }
 
-	args.push(remote);
+  args.push(remote)
 
-	if (branch) {
-		args.push(branch);
-	}
+  if (branch) {
+    args.push(branch)
+  }
 
-	await gitExec(args, { cwd: options.cwd, timeout: 120000 });
+  await gitExec(args, { cwd: options.cwd, timeout: 120000 })
 }

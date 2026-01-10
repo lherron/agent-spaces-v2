@@ -5,51 +5,48 @@
  * that map to specific versions without needing semver resolution.
  */
 
-import { showFileOrNull, showJson } from "@agent-spaces/git";
-import type { SpaceId, CommitSha } from "@agent-spaces/core";
-import { SelectorResolutionError } from "@agent-spaces/core";
+import type { SpaceId } from '@agent-spaces/core'
+import { showFileOrNull } from '@agent-spaces/git'
 
 /**
  * Dist-tags file structure.
  * Maps space IDs to channel -> version mappings.
  */
 export interface DistTagsFile {
-	[spaceId: string]: {
-		[channel: string]: string; // e.g., "v1.2.3"
-	};
+  [spaceId: string]: {
+    [channel: string]: string // e.g., "v1.2.3"
+  }
 }
 
 /**
  * Options for dist-tags operations.
  */
 export interface DistTagsOptions {
-	/** Working directory (registry repo root) */
-	cwd: string;
-	/** Git ref to read from (default: HEAD) */
-	ref?: string | undefined;
+  /** Working directory (registry repo root) */
+  cwd: string
+  /** Git ref to read from (default: HEAD) */
+  ref?: string | undefined
 }
 
 /**
  * Read the dist-tags.json file from the registry.
  * Returns null if the file doesn't exist.
  */
-export async function readDistTags(
-	options: DistTagsOptions
-): Promise<DistTagsFile | null> {
-	const ref = options.ref ?? "HEAD";
-	const path = "registry/dist-tags.json";
+export async function readDistTags(options: DistTagsOptions): Promise<DistTagsFile | null> {
+  const ref = options.ref ?? 'HEAD'
+  const path = 'registry/dist-tags.json'
 
-	// showFileOrNull takes (commitish, path, options)
-	const content = await showFileOrNull(ref, path, { cwd: options.cwd });
-	if (content === null) {
-		return null;
-	}
+  // showFileOrNull takes (commitish, path, options)
+  const content = await showFileOrNull(ref, path, { cwd: options.cwd })
+  if (content === null) {
+    return null
+  }
 
-	try {
-		return JSON.parse(content) as DistTagsFile;
-	} catch {
-		return null;
-	}
+  try {
+    return JSON.parse(content) as DistTagsFile
+  } catch {
+    return null
+  }
 }
 
 /**
@@ -57,50 +54,48 @@ export async function readDistTags(
  * Returns the version (e.g., "v1.2.3") or null if not found.
  */
 export async function resolveDistTag(
-	spaceId: SpaceId,
-	tagName: string,
-	options: DistTagsOptions
+  spaceId: SpaceId,
+  tagName: string,
+  options: DistTagsOptions
 ): Promise<string | null> {
-	const distTags = await readDistTags(options);
-	if (distTags === null) {
-		return null;
-	}
+  const distTags = await readDistTags(options)
+  if (distTags === null) {
+    return null
+  }
 
-	const spaceTags = distTags[spaceId];
-	if (!spaceTags) {
-		return null;
-	}
+  const spaceTags = distTags[spaceId]
+  if (!spaceTags) {
+    return null
+  }
 
-	return spaceTags[tagName] ?? null;
+  return spaceTags[tagName] ?? null
 }
 
 /**
  * Get all available dist-tags for a space.
  */
 export async function getDistTagsForSpace(
-	spaceId: SpaceId,
-	options: DistTagsOptions
+  spaceId: SpaceId,
+  options: DistTagsOptions
 ): Promise<Record<string, string>> {
-	const distTags = await readDistTags(options);
-	if (distTags === null) {
-		return {};
-	}
+  const distTags = await readDistTags(options)
+  if (distTags === null) {
+    return {}
+  }
 
-	return distTags[spaceId] ?? {};
+  return distTags[spaceId] ?? {}
 }
 
 /**
  * Get all spaces that have dist-tags.
  */
-export async function getAllDistTagSpaces(
-	options: DistTagsOptions
-): Promise<SpaceId[]> {
-	const distTags = await readDistTags(options);
-	if (distTags === null) {
-		return [];
-	}
+export async function getAllDistTagSpaces(options: DistTagsOptions): Promise<SpaceId[]> {
+  const distTags = await readDistTags(options)
+  if (distTags === null) {
+    return []
+  }
 
-	return Object.keys(distTags) as SpaceId[];
+  return Object.keys(distTags) as SpaceId[]
 }
 
 /**
@@ -108,7 +103,7 @@ export async function getAllDistTagSpaces(
  * e.g., "v1.2.3" or "1.2.3" -> "space/<id>/v1.2.3"
  */
 export function versionToGitTag(spaceId: SpaceId, version: string): string {
-	// Normalize version to include 'v' prefix
-	const normalizedVersion = version.startsWith("v") ? version : `v${version}`;
-	return `space/${spaceId}/${normalizedVersion}`;
+  // Normalize version to include 'v' prefix
+  const normalizedVersion = version.startsWith('v') ? version : `v${version}`
+  return `space/${spaceId}/${normalizedVersion}`
 }

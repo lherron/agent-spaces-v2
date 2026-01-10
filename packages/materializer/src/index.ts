@@ -12,57 +12,57 @@
 
 // Plugin.json generation
 export {
-	generatePluginJson,
-	writePluginJson,
-	getPluginJsonPath,
-	type PluginJson,
-} from "./plugin-json.js";
+  generatePluginJson,
+  writePluginJson,
+  getPluginJsonPath,
+  type PluginJson,
+} from './plugin-json.js'
 
 // Component linking
 export {
-	linkFile,
-	linkDirectory,
-	linkComponents,
-	isDirectory,
-	getAvailableComponents,
-	COMPONENT_DIRS,
-	type ComponentDir,
-	type LinkOptions,
-} from "./link-components.js";
+  linkFile,
+  linkDirectory,
+  linkComponents,
+  isDirectory,
+  getAvailableComponents,
+  COMPONENT_DIRS,
+  type ComponentDir,
+  type LinkOptions,
+} from './link-components.js'
 
 // Hooks validation
 export {
-	readHooksConfig,
-	isExecutable,
-	makeExecutable,
-	validateHooks,
-	ensureHooksExecutable,
-	checkHookPaths,
-	type HookDefinition,
-	type HooksConfig,
-	type HookValidationResult,
-} from "./hooks-builder.js";
+  readHooksConfig,
+  isExecutable,
+  makeExecutable,
+  validateHooks,
+  ensureHooksExecutable,
+  checkHookPaths,
+  type HookDefinition,
+  type HooksConfig,
+  type HookValidationResult,
+} from './hooks-builder.js'
 
 // MCP composition
 export {
-	readMcpConfig,
-	composeMcpConfigs,
-	checkMcpCollisions,
-	writeMcpConfig,
-	readAllMcpConfigs,
-	composeMcpFromSpaces,
-	type McpServerConfig,
-	type McpConfig,
-} from "./mcp-composer.js";
+  readMcpConfig,
+  composeMcpConfigs,
+  checkMcpCollisions,
+  writeMcpConfig,
+  readAllMcpConfigs,
+  composeMcpFromSpaces,
+  type McpServerConfig,
+  type McpConfig,
+} from './mcp-composer.js'
 
 // Main materialization
 export {
-	materializeSpace,
-	materializeSpaces,
-	materializeWithMcp,
-	getPluginPaths,
-	type MaterializeInput,
-	type MaterializeResult,
-	type MaterializeOptions,
-	type FullMaterializationResult,
-} from "./materialize.js";
+  materializeSpace,
+  materializeSpaces,
+  materializeWithMcp,
+  getPluginPaths,
+  type MaterializeInput,
+  type MaterializeResult,
+  type MaterializeOptions,
+  type FullMaterializationResult,
+} from './materialize.js'

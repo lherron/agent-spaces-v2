@@ -6,32 +6,32 @@
  * are executed safely without shell interpretation of special characters.
  */
 
-import { GitError } from "@agent-spaces/core";
+import { GitError } from '@agent-spaces/core'
 
 /**
  * Result of a git command execution.
  */
 export interface GitExecResult {
-	/** Exit code from the git process */
-	exitCode: number;
-	/** Standard output from the command */
-	stdout: string;
-	/** Standard error from the command */
-	stderr: string;
+  /** Exit code from the git process */
+  exitCode: number
+  /** Standard output from the command */
+  stdout: string
+  /** Standard error from the command */
+  stderr: string
 }
 
 /**
  * Options for git command execution.
  */
 export interface GitExecOptions {
-	/** Working directory for the command (defaults to cwd) */
-	cwd?: string | undefined;
-	/** Environment variables to pass to the process */
-	env?: Record<string, string> | undefined;
-	/** Timeout in milliseconds (default: 60000ms = 1 minute) */
-	timeout?: number | undefined;
-	/** If true, don't throw on non-zero exit code */
-	ignoreExitCode?: boolean | undefined;
+  /** Working directory for the command (defaults to cwd) */
+  cwd?: string | undefined
+  /** Environment variables to pass to the process */
+  env?: Record<string, string> | undefined
+  /** Timeout in milliseconds (default: 60000ms = 1 minute) */
+  timeout?: number | undefined
+  /** If true, don't throw on non-zero exit code */
+  ignoreExitCode?: boolean | undefined
 }
 
 /**
@@ -55,95 +55,85 @@ export interface GitExecOptions {
  * ```
  */
 export async function gitExec(
-	args: string[],
-	options: GitExecOptions = {}
+  args: string[],
+  options: GitExecOptions = {}
 ): Promise<GitExecResult> {
-	const { cwd, env, timeout = 60000, ignoreExitCode = false } = options;
+  const { cwd, env, timeout = 60000, ignoreExitCode = false } = options
 
-	const command = ["git", ...args];
+  const command = ['git', ...args]
 
-	// Build spawn options, only include cwd if defined
-	const spawnOptions: {
-		cwd?: string;
-		env?: Record<string, string | undefined>;
-		stdout: "pipe";
-		stderr: "pipe";
-	} = {
-		stdout: "pipe",
-		stderr: "pipe",
-	};
+  // Build spawn options, only include cwd if defined
+  const spawnOptions: {
+    cwd?: string
+    env?: Record<string, string | undefined>
+    stdout: 'pipe'
+    stderr: 'pipe'
+  } = {
+    stdout: 'pipe',
+    stderr: 'pipe',
+  }
 
-	if (cwd !== undefined) {
-		spawnOptions.cwd = cwd;
-	}
+  if (cwd !== undefined) {
+    spawnOptions.cwd = cwd
+  }
 
-	if (env !== undefined) {
-		spawnOptions.env = { ...process.env, ...env };
-	}
+  if (env !== undefined) {
+    spawnOptions.env = { ...process.env, ...env }
+  }
 
-	const proc = Bun.spawn(command, spawnOptions);
+  const proc = Bun.spawn(command, spawnOptions)
 
-	// Handle timeout
-	let timeoutId: ReturnType<typeof setTimeout> | undefined;
-	const timeoutPromise = new Promise<never>((_, reject) => {
-		timeoutId = setTimeout(() => {
-			proc.kill();
-			reject(
-				new GitError(
-					command.join(" "),
-					-1,
-					`Timeout exceeded (${timeout}ms)`
-				)
-			);
-		}, timeout);
-	});
+  // Handle timeout
+  let timeoutId: ReturnType<typeof setTimeout> | undefined
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    timeoutId = setTimeout(() => {
+      proc.kill()
+      reject(new GitError(command.join(' '), -1, `Timeout exceeded (${timeout}ms)`))
+    }, timeout)
+  })
 
-	try {
-		// Wait for process to complete or timeout
-		const exitCode = await Promise.race([proc.exited, timeoutPromise]);
+  try {
+    // Wait for process to complete or timeout
+    const exitCode = await Promise.race([proc.exited, timeoutPromise])
 
-		// Clear timeout since process completed
-		if (timeoutId) {
-			clearTimeout(timeoutId);
-		}
+    // Clear timeout since process completed
+    if (timeoutId) {
+      clearTimeout(timeoutId)
+    }
 
-		// Read stdout and stderr
-		const stdout = await new Response(proc.stdout).text();
-		const stderr = await new Response(proc.stderr).text();
+    // Read stdout and stderr
+    const stdout = await new Response(proc.stdout).text()
+    const stderr = await new Response(proc.stderr).text()
 
-		const result: GitExecResult = {
-			exitCode,
-			stdout,
-			stderr,
-		};
+    const result: GitExecResult = {
+      exitCode,
+      stdout,
+      stderr,
+    }
 
-		// Throw error on non-zero exit code unless ignoreExitCode is true
-		if (exitCode !== 0 && !ignoreExitCode) {
-			throw new GitError(
-				command.join(" "),
-				exitCode,
-				stderr || stdout
-			);
-		}
+    // Throw error on non-zero exit code unless ignoreExitCode is true
+    if (exitCode !== 0 && !ignoreExitCode) {
+      throw new GitError(command.join(' '), exitCode, stderr || stdout)
+    }
 
-		return result;
-	} catch (error) {
-		if (timeoutId) {
-			clearTimeout(timeoutId);
-		}
+    return result
+  } catch (error) {
+    if (timeoutId) {
+      clearTimeout(timeoutId)
+    }
 
-		// Re-throw GitError as-is
-		if (error instanceof GitError) {
-			throw error;
-		}
+    // Re-throw GitError as-is
+    if (error instanceof GitError) {
+      throw error
+    }
 
-		// Wrap other errors
-		throw new GitError(
-			command.join(" "),
-			-1,
-			error instanceof Error ? error.message : String(error)
-		);
-	}
+    // Wrap other errors
+    throw new GitError(
+      command.join(' '),
+      -1,
+      error instanceof Error ? error.message : String(error)
+    )
+  }
 }
 
 /**
@@ -155,12 +145,9 @@ export async function gitExec(
  * @returns Trimmed stdout string
  * @throws GitError if the command fails
  */
-export async function gitExecStdout(
-	args: string[],
-	options: GitExecOptions = {}
-): Promise<string> {
-	const result = await gitExec(args, options);
-	return result.stdout.trim();
+export async function gitExecStdout(args: string[], options: GitExecOptions = {}): Promise<string> {
+  const result = await gitExec(args, options)
+  return result.stdout.trim()
 }
 
 /**
@@ -173,12 +160,12 @@ export async function gitExecStdout(
  * @throws GitError if the command fails
  */
 export async function gitExecLines(
-	args: string[],
-	options: GitExecOptions = {}
+  args: string[],
+  options: GitExecOptions = {}
 ): Promise<string[]> {
-	const stdout = await gitExecStdout(args, options);
-	if (!stdout) {
-		return [];
-	}
-	return stdout.split("\n").filter((line) => line.length > 0);
+  const stdout = await gitExecStdout(args, options)
+  if (!stdout) {
+    return []
+  }
+  return stdout.split('\n').filter((line) => line.length > 0)
 }

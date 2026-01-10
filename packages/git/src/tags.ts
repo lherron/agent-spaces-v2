@@ -8,16 +8,16 @@
  * These tags are used by the resolver to map selectors to specific commits.
  */
 
-import { gitExec, gitExecLines, gitExecStdout } from "./exec.js";
+import { gitExec, gitExecLines, gitExecStdout } from './exec.js'
 
 /**
  * Parsed git tag with associated commit.
  */
 export interface GitTag {
-	/** Full tag name (e.g., "space/my-space/v1.0.0") */
-	name: string;
-	/** Commit SHA the tag points to */
-	commit: string;
+  /** Full tag name (e.g., "space/my-space/v1.0.0") */
+  name: string
+  /** Commit SHA the tag points to */
+  commit: string
 }
 
 /**
@@ -35,10 +35,10 @@ export interface GitTag {
  * ```
  */
 export async function listTags(
-	pattern: string,
-	options: { cwd?: string | undefined } = {}
+  pattern: string,
+  options: { cwd?: string | undefined } = {}
 ): Promise<string[]> {
-	return gitExecLines(["tag", "-l", pattern], options);
+  return gitExecLines(['tag', '-l', pattern], options)
 }
 
 /**
@@ -55,28 +55,28 @@ export async function listTags(
  * ```
  */
 export async function listTagsWithCommits(
-	pattern: string,
-	options: { cwd?: string | undefined } = {}
+  pattern: string,
+  options: { cwd?: string | undefined } = {}
 ): Promise<GitTag[]> {
-	// Use --format to get tag name and dereferenced commit SHA
-	// %(objectname) gives the tag object SHA, %(*objectname) gives the commit for annotated tags
-	// For lightweight tags, %(objectname) is the commit SHA directly
-	const lines = await gitExecLines(
-		[
-			"tag",
-			"-l",
-			pattern,
-			"--format=%(refname:short) %(if)%(*objectname)%(then)%(*objectname)%(else)%(objectname)%(end)",
-		],
-		options
-	);
+  // Use --format to get tag name and dereferenced commit SHA
+  // %(objectname) gives the tag object SHA, %(*objectname) gives the commit for annotated tags
+  // For lightweight tags, %(objectname) is the commit SHA directly
+  const lines = await gitExecLines(
+    [
+      'tag',
+      '-l',
+      pattern,
+      '--format=%(refname:short) %(if)%(*objectname)%(then)%(*objectname)%(else)%(objectname)%(end)',
+    ],
+    options
+  )
 
-	return lines.map((line) => {
-		const parts = line.split(" ");
-		const name = parts[0] ?? "";
-		const commit = parts[1] ?? "";
-		return { name, commit };
-	});
+  return lines.map((line) => {
+    const parts = line.split(' ')
+    const name = parts[0] ?? ''
+    const commit = parts[1] ?? ''
+    return { name, commit }
+  })
 }
 
 /**
@@ -94,12 +94,12 @@ export async function listTagsWithCommits(
  * ```
  */
 export async function getTagCommit(
-	tagName: string,
-	options: { cwd?: string | undefined } = {}
+  tagName: string,
+  options: { cwd?: string | undefined } = {}
 ): Promise<string> {
-	// Use rev-parse to resolve tag to commit SHA
-	// ^{} dereferences to the commit for annotated tags
-	return gitExecStdout(["rev-parse", `${tagName}^{}`], options);
+  // Use rev-parse to resolve tag to commit SHA
+  // ^{} dereferences to the commit for annotated tags
+  return gitExecStdout(['rev-parse', `${tagName}^{}`], options)
 }
 
 /**
@@ -110,14 +110,14 @@ export async function getTagCommit(
  * @returns True if tag exists, false otherwise
  */
 export async function tagExists(
-	tagName: string,
-	options: { cwd?: string | undefined } = {}
+  tagName: string,
+  options: { cwd?: string | undefined } = {}
 ): Promise<boolean> {
-	const result = await gitExec(["tag", "-l", tagName], {
-		...options,
-		ignoreExitCode: true,
-	});
-	return result.stdout.trim() === tagName;
+  const result = await gitExec(['tag', '-l', tagName], {
+    ...options,
+    ignoreExitCode: true,
+  })
+  return result.stdout.trim() === tagName
 }
 
 /**
@@ -138,15 +138,15 @@ export async function tagExists(
  * ```
  */
 export async function createTag(
-	tagName: string,
-	commit?: string | undefined,
-	options: { cwd?: string | undefined } = {}
+  tagName: string,
+  commit?: string | undefined,
+  options: { cwd?: string | undefined } = {}
 ): Promise<void> {
-	const args = ["tag", tagName];
-	if (commit) {
-		args.push(commit);
-	}
-	await gitExec(args, options);
+  const args = ['tag', tagName]
+  if (commit) {
+    args.push(commit)
+  }
+  await gitExec(args, options)
 }
 
 /**
@@ -159,16 +159,16 @@ export async function createTag(
  * @throws GitError if tag already exists or commit is invalid
  */
 export async function createAnnotatedTag(
-	tagName: string,
-	message: string,
-	commit?: string | undefined,
-	options: { cwd?: string | undefined } = {}
+  tagName: string,
+  message: string,
+  commit?: string | undefined,
+  options: { cwd?: string | undefined } = {}
 ): Promise<void> {
-	const args = ["tag", "-a", tagName, "-m", message];
-	if (commit) {
-		args.push(commit);
-	}
-	await gitExec(args, options);
+  const args = ['tag', '-a', tagName, '-m', message]
+  if (commit) {
+    args.push(commit)
+  }
+  await gitExec(args, options)
 }
 
 /**
@@ -179,10 +179,10 @@ export async function createAnnotatedTag(
  * @throws GitError if tag doesn't exist
  */
 export async function deleteTag(
-	tagName: string,
-	options: { cwd?: string | undefined } = {}
+  tagName: string,
+  options: { cwd?: string | undefined } = {}
 ): Promise<void> {
-	await gitExec(["tag", "-d", tagName], options);
+  await gitExec(['tag', '-d', tagName], options)
 }
 
 /**
@@ -194,11 +194,11 @@ export async function deleteTag(
  * @throws GitError if push fails
  */
 export async function pushTag(
-	tagName: string,
-	remote = "origin",
-	options: { cwd?: string | undefined } = {}
+  tagName: string,
+  remote = 'origin',
+  options: { cwd?: string | undefined } = {}
 ): Promise<void> {
-	await gitExec(["push", remote, `refs/tags/${tagName}`], options);
+  await gitExec(['push', remote, `refs/tags/${tagName}`], options)
 }
 
 /**
@@ -210,11 +210,11 @@ export async function pushTag(
  * @throws GitError if deletion fails
  */
 export async function deleteRemoteTag(
-	tagName: string,
-	remote = "origin",
-	options: { cwd?: string | undefined } = {}
+  tagName: string,
+  remote = 'origin',
+  options: { cwd?: string | undefined } = {}
 ): Promise<void> {
-	await gitExec(["push", remote, `:refs/tags/${tagName}`], options);
+  await gitExec(['push', remote, `:refs/tags/${tagName}`], options)
 }
 
 /**
@@ -225,8 +225,8 @@ export async function deleteRemoteTag(
  * @throws GitError if fetch fails
  */
 export async function fetchTags(
-	remote = "origin",
-	options: { cwd?: string | undefined } = {}
+  remote = 'origin',
+  options: { cwd?: string | undefined } = {}
 ): Promise<void> {
-	await gitExec(["fetch", remote, "--tags"], options);
+  await gitExec(['fetch', remote, '--tags'], options)
 }
