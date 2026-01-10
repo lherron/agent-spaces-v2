@@ -7,7 +7,7 @@
  * using `/space:command` format for reliability.
  */
 
-import { readdir, readFile, stat } from 'node:fs/promises'
+import { readFile, readdir, stat } from 'node:fs/promises'
 import { join } from 'node:path'
 import type { LintContext, LintWarning, SpaceLintData } from '../types.js'
 import { WARNING_CODES } from '../types.js'
@@ -79,12 +79,9 @@ async function getAgentFiles(pluginPath: string): Promise<string[]> {
  */
 function findUnqualifiedCommands(text: string): string[] {
   const matches = new Set<string>()
-  let match: RegExpExecArray | null
 
-  // Reset the regex before using
-  UNQUALIFIED_COMMAND_PATTERN.lastIndex = 0
-
-  while ((match = UNQUALIFIED_COMMAND_PATTERN.exec(text)) !== null) {
+  // Use matchAll instead of exec loop to avoid assignment-in-expression
+  for (const match of text.matchAll(UNQUALIFIED_COMMAND_PATTERN)) {
     const command = match[1]
     if (command !== undefined) {
       matches.add(command)

@@ -210,10 +210,7 @@ describe('W202: checkAgentCommandNamespace', () => {
     await mkdir(join(plugin, 'commands'), { recursive: true })
     await mkdir(join(plugin, 'agents'), { recursive: true })
     await writeFile(join(plugin, 'commands', 'deploy.md'), '# Deploy')
-    await writeFile(
-      join(plugin, 'agents', 'reviewer.md'),
-      '# Reviewer\n\nUse /deploy to deploy.'
-    )
+    await writeFile(join(plugin, 'agents', 'reviewer.md'), '# Reviewer\n\nUse /deploy to deploy.')
 
     const context: LintContext = {
       spaces: [

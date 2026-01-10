@@ -13,6 +13,8 @@ import {
   type LockSpaceEntry,
   type LockTargetEntry,
   type SpaceKey,
+  asSha256Integrity,
+  asSpaceId,
   lockFileExists,
   readLockJson,
 } from '@agent-spaces/core'
@@ -163,13 +165,13 @@ async function explainTarget(
       key: space.key,
       manifest: {
         schema: 1 as const,
-        id: space.id as any,
+        id: asSpaceId(space.id),
         plugin: {
           name: space.pluginName,
           version: space.pluginVersion,
         },
       },
-      pluginPath: paths.snapshot(space.integrity as any),
+      pluginPath: paths.snapshot(asSha256Integrity(space.integrity)),
     }))
 
     const lintContext: LintContext = { spaces: lintData }

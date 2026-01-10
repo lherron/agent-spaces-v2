@@ -6,7 +6,13 @@
  */
 
 import { describe, expect, it } from 'bun:test'
-import type { LockFile, Sha256Integrity, SpaceKey } from '@agent-spaces/core'
+import {
+  type LockFile,
+  type Sha256Integrity,
+  type SpaceKey,
+  asCommitSha,
+  asSpaceId,
+} from '@agent-spaces/core'
 import { computeReachableCacheKeys, computeReachableIntegrities } from './gc.js'
 
 function createMockLock(
@@ -22,10 +28,11 @@ function createMockLock(
   }
 
   for (const [key, { integrity, pluginName, version }] of Object.entries(spaces)) {
+    const [spaceId, commitSha] = key.split('@')
     lock.spaces[key as SpaceKey] = {
-      id: key.split('@')[0] as any,
-      commit: key.split('@')[1] as any,
-      path: `spaces/${key.split('@')[0]}`,
+      id: asSpaceId(spaceId ?? ''),
+      commit: asCommitSha(commitSha ?? ''),
+      path: `spaces/${spaceId}`,
       integrity: integrity as Sha256Integrity,
       plugin: { name: pluginName, version },
       deps: { spaces: [] },
@@ -38,11 +45,11 @@ function createMockLock(
 describe('computeReachableIntegrities', () => {
   it('should collect all integrities from locks', () => {
     const lock1 = createMockLock({
-      'space-a@abc': { integrity: 'sha256:111', pluginName: 'a', version: '1.0.0' },
-      'space-b@def': { integrity: 'sha256:222', pluginName: 'b', version: '1.0.0' },
+      'space-a@1111111': { integrity: 'sha256:111', pluginName: 'a', version: '1.0.0' },
+      'space-b@2222222': { integrity: 'sha256:222', pluginName: 'b', version: '1.0.0' },
     })
     const lock2 = createMockLock({
-      'space-c@ghi': { integrity: 'sha256:333', pluginName: 'c', version: '1.0.0' },
+      'space-c@3333333': { integrity: 'sha256:333', pluginName: 'c', version: '1.0.0' },
     })
 
     const reachable = computeReachableIntegrities([lock1, lock2])
@@ -54,10 +61,10 @@ describe('computeReachableIntegrities', () => {
 
   it('should dedupe same integrity across locks', () => {
     const lock1 = createMockLock({
-      'space-a@abc': { integrity: 'sha256:111', pluginName: 'a', version: '1.0.0' },
+      'space-a@1111111': { integrity: 'sha256:111', pluginName: 'a', version: '1.0.0' },
     })
     const lock2 = createMockLock({
-      'space-a@abc': { integrity: 'sha256:111', pluginName: 'a', version: '1.0.0' },
+      'space-a@1111111': { integrity: 'sha256:111', pluginName: 'a', version: '1.0.0' },
     })
 
     const reachable = computeReachableIntegrities([lock1, lock2])
@@ -73,8 +80,8 @@ describe('computeReachableIntegrities', () => {
 describe('computeReachableCacheKeys', () => {
   it('should compute cache keys for all spaces', () => {
     const lock = createMockLock({
-      'space-a@abc': { integrity: 'sha256:111', pluginName: 'a', version: '1.0.0' },
-      'space-b@def': { integrity: 'sha256:222', pluginName: 'b', version: '2.0.0' },
+      'space-a@1111111': { integrity: 'sha256:111', pluginName: 'a', version: '1.0.0' },
+      'space-b@2222222': { integrity: 'sha256:222', pluginName: 'b', version: '2.0.0' },
     })
 
     const reachable = computeReachableCacheKeys([lock])
@@ -83,7 +90,7 @@ describe('computeReachableCacheKeys', () => {
 
   it('should use 0.0.0 for missing version', () => {
     const lock = createMockLock({
-      'space-a@abc': { integrity: 'sha256:111', pluginName: 'a', version: '' },
+      'space-a@1111111': { integrity: 'sha256:111', pluginName: 'a', version: '' },
     })
     // This tests that the function handles undefined/empty version
     const reachable = computeReachableCacheKeys([lock])
