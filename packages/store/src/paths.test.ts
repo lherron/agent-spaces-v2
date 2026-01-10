@@ -21,39 +21,39 @@ import {
 } from './paths.js'
 
 describe('getAspHome', () => {
-  const originalEnv = process.env['ASP_HOME']
+  const originalEnv = process.env.ASP_HOME
 
   afterEach(() => {
     if (originalEnv !== undefined) {
-      process.env['ASP_HOME'] = originalEnv
+      process.env.ASP_HOME = originalEnv
     } else {
-      delete process.env['ASP_HOME']
+      process.env.ASP_HOME = undefined
     }
   })
 
   it('should return default when ASP_HOME not set', () => {
-    delete process.env['ASP_HOME']
+    process.env.ASP_HOME = undefined
     expect(getAspHome()).toBe(join(homedir(), '.asp'))
   })
 
   it('should return env var when ASP_HOME is set', () => {
-    process.env['ASP_HOME'] = '/custom/path'
+    process.env.ASP_HOME = '/custom/path'
     expect(getAspHome()).toBe('/custom/path')
   })
 })
 
 describe('path functions', () => {
-  const originalEnv = process.env['ASP_HOME']
+  const originalEnv = process.env.ASP_HOME
 
   beforeEach(() => {
-    process.env['ASP_HOME'] = '/test/asp'
+    process.env.ASP_HOME = '/test/asp'
   })
 
   afterEach(() => {
     if (originalEnv !== undefined) {
-      process.env['ASP_HOME'] = originalEnv
+      process.env.ASP_HOME = originalEnv
     } else {
-      delete process.env['ASP_HOME']
+      process.env.ASP_HOME = undefined
     }
   })
 

@@ -36,7 +36,7 @@ let cachedInfo: ClaudeInfo | null = null
  * Get home directory with fallback.
  */
 function getHomeDir(): string {
-  return process.env['HOME'] || '~'
+  return process.env.HOME || '~'
 }
 
 /**
@@ -78,7 +78,7 @@ async function isExecutable(path: string): Promise<boolean> {
  * @returns Path to claude binary, or null if not found
  */
 async function searchPath(): Promise<string | null> {
-  const pathEnv = process.env['PATH'] || ''
+  const pathEnv = process.env.PATH || ''
   const pathDirs = pathEnv.split(':')
 
   for (const dir of pathDirs) {
@@ -106,7 +106,7 @@ export async function findClaudeBinary(): Promise<string> {
   const searchedPaths: string[] = []
 
   // 1. Check ASP_CLAUDE_PATH environment variable
-  const envPath = process.env['ASP_CLAUDE_PATH']
+  const envPath = process.env.ASP_CLAUDE_PATH
   if (envPath) {
     searchedPaths.push(envPath)
     if (await isExecutable(envPath)) {

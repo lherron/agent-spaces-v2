@@ -20,7 +20,7 @@ export const DEFAULT_ASP_HOME = join(homedir(), '.asp')
  * Uses ASP_HOME env var if set, otherwise defaults to ~/.asp
  */
 export function getAspHome(): string {
-  return process.env['ASP_HOME'] ?? DEFAULT_ASP_HOME
+  return process.env.ASP_HOME ?? DEFAULT_ASP_HOME
 }
 
 /**

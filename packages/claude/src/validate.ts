@@ -46,7 +46,7 @@ interface PluginJson {
 /**
  * Known component directories in a plugin.
  */
-const COMPONENT_DIRS = ['commands', 'agents', 'skills', 'hooks', 'scripts', 'mcp']
+const _COMPONENT_DIRS = ['commands', 'agents', 'skills', 'hooks', 'scripts', 'mcp']
 
 /**
  * Validate a single plugin directory.
@@ -81,7 +81,7 @@ export async function validatePlugin(pluginDir: string): Promise<PluginValidatio
       result.errors.push(`Not a directory: ${pluginDir}`)
       return result
     }
-  } catch (error) {
+  } catch (_error) {
     result.valid = false
     result.errors.push(`Directory not accessible: ${pluginDir}`)
     return result
@@ -197,7 +197,7 @@ export async function validatePlugin(pluginDir: string): Promise<PluginValidatio
  * Validate hooks.json content.
  */
 async function validateHooksJson(
-  pluginDir: string,
+  _pluginDir: string,
   hooksJson: unknown,
   result: PluginValidationResult
 ): Promise<void> {
@@ -218,7 +218,7 @@ async function validateHooksJson(
     const config = hookConfig as Record<string, unknown>
 
     // Check command path uses ${CLAUDE_PLUGIN_ROOT}
-    const configCommand = config['command']
+    const configCommand = config.command
     if (typeof configCommand === 'string') {
       if (configCommand.includes('/') && !configCommand.startsWith('${CLAUDE_PLUGIN_ROOT}')) {
         result.warnings.push(
@@ -228,12 +228,12 @@ async function validateHooksJson(
     }
 
     // Check hooks array
-    const configHooks = config['hooks']
+    const configHooks = config.hooks
     if (Array.isArray(configHooks)) {
       for (const hookDef of configHooks) {
         if (hookDef && typeof hookDef === 'object') {
           const def = hookDef as Record<string, unknown>
-          const defCommand = def['command']
+          const defCommand = def.command
           if (typeof defCommand === 'string') {
             if (defCommand.includes('/') && !defCommand.startsWith('${CLAUDE_PLUGIN_ROOT}')) {
               result.warnings.push(
