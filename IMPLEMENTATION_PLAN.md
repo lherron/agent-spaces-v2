@@ -1,8 +1,8 @@
 # Implementation Plan: Agent Spaces v2
 
-**Status:** Core implementation complete. All 483 tests passing, 0 lint warnings.
+**Status:** Core implementation complete. All 490 tests passing, 0 lint warnings.
 
-**Latest Tag:** v0.0.58
+**Latest Tag:** v0.0.59
 
 ---
 
@@ -36,10 +36,14 @@ Based on spec analysis, the following test gaps should be addressed:
 
 - [x] **W203-W207 Lint Warning Tests** (COMPLETE)
 
-- [ ] **MCP Config Generation Tests**
-  - Test MCP config composition from multiple spaces
-  - Verify `--mcp-config` flag passed to Claude
-  - Test `--strict-mcp-config` option
+- [x] **MCP Config Generation Tests** (COMPLETE)
+  - Added 4 test fixtures: mcp-server-a, mcp-server-b, mcp-collision-a, mcp-collision-b
+  - 7 integration tests in `mcp.test.ts` covering:
+    - MCP config composition from multiple spaces
+    - `--mcp-config` flag passed to Claude
+    - Later spaces override earlier MCP server definitions
+    - Mixed spaces with/without MCP configs
+  - Note: `--strict-mcp-config` not implemented in spec
 
 - [ ] **Global Mode Tests (`asp run` outside projects)**
   - Running spaces outside project context
@@ -113,8 +117,8 @@ Based on spec analysis, the following test gaps should be addressed:
 | cli | 1 | ✅ |
 | engine | 1 | ✅ |
 | materializer | 19 | ✅ |
-| integration-tests | 60 | ✅ |
-| **Total** | **483** | **✅** |
+| integration-tests | 67 | ✅ |
+| **Total** | **490** | **✅** |
 
 ---
 
