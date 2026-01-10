@@ -301,6 +301,16 @@ Updated spec path hierarchies to match implementation simplifications:
 
 ---
 
+## Spec Alignment (v0.0.45)
+
+Fixed `asp upgrade` command to support multiple space IDs per spec:
+- **Before**: `asp upgrade [spaceId]` - only accepted single space ID
+- **After**: `asp upgrade [spaceIds...]` - now accepts variadic multiple space IDs
+- The engine already supported `upgradeSpaceIds: string[]` array, this aligns CLI with engine capability
+- Example usage: `asp upgrade frontend backend` to upgrade only frontend and backend spaces
+
+---
+
 ## Known Issues
 
 ### Spec Alignment Status
@@ -316,7 +326,7 @@ Updated spec path hierarchies to match implementation simplifications:
 - All integration tests passing. Previously skipped "exits with claude exit code" test is now fixed by adding `env` option to RunOptions to pass env vars to subprocess.
 
 ### Version Tags
-- Current git tag is `v0.0.44`
+- Current git tag is `v0.0.45`
 
 ### Test Coverage
 - Total tests: 470 passing (415 package tests + 55 integration tests)
