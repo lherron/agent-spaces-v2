@@ -25,7 +25,13 @@ import { composeMcpFromSpaces, materializeSpaces } from '@agent-spaces/materiali
 
 import { PathResolver, ensureDir, getAspHome } from '@agent-spaces/store'
 
-import { type LintContext, type LintWarning, type SpaceLintData, lint } from '@agent-spaces/lint'
+import {
+  type LintContext,
+  type LintWarning,
+  type SpaceLintData,
+  WARNING_CODES,
+  lint,
+} from '@agent-spaces/lint'
 
 import { install } from './install.js'
 import type { ResolveOptions } from './resolve.js'
@@ -84,11 +90,13 @@ export async function build(targetName: string, options: BuildOptions): Promise<
 
   // Ensure we have a lock file
   let lock: LockFile
+  let lockWasMissing = false
   const lockPath = join(options.projectPath, LOCK_FILENAME)
   if (await lockFileExists(lockPath)) {
     lock = await readLockJson(lockPath)
   } else if (options.autoInstall !== false) {
     // Run install to generate lock
+    lockWasMissing = true
     const installResult = await install({
       ...options,
       targets: [targetName],
@@ -146,6 +154,15 @@ export async function build(targetName: string, options: BuildOptions): Promise<
 
     const lintContext: LintContext = { spaces: lintData }
     warnings = await lint(lintContext)
+  }
+
+  // Add W301 warning if lock file was missing and auto-generated
+  if (lockWasMissing) {
+    warnings.unshift({
+      code: WARNING_CODES.LOCK_MISSING,
+      message: 'Lock file was missing and has been auto-generated. Run "asp install" to generate it explicitly.',
+      severity: 'info',
+    })
   }
 
   return {

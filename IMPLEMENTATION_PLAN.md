@@ -200,6 +200,16 @@
 
 ---
 
+## Bug Fixes Applied (v0.0.27)
+
+- Added W301 "lock-missing" warning code per spec
+- Added W205 plugin name collision warnings to lock file generation
+- Lock files now include warnings in targetEntry per spec
+- Added lock-generator.test.ts with 3 tests for W205 warnings
+- Added W301 integration test in build.test.ts
+
+---
+
 ## Known Issues
 
 ### Lint Configuration
@@ -214,7 +224,7 @@
 - Current git tag is `v0.0.26`
 
 ### Test Coverage
-- Total tests: 341 passing
+- Total tests: 346 passing
 - Added tests for critical modules: atomic.ts (26), locks.ts (18), snapshot.ts (18), invoke.ts (21)
 - Fixed proper-lockfile error handling in locks.ts
 
@@ -222,8 +232,9 @@
 - [x] `packages/cli/src/commands/upgrade.ts` - Filter space by ID in upgrade command (implemented via `pinnedSpaces` in resolver and `upgradeSpaceIds` in engine)
 - [x] `packages/core/src/index.test.ts` - Unit tests for core modules (60 tests for refs and errors)
 - [x] Added tests for core/atomic.ts, core/locks.ts, store/snapshot.ts, claude/invoke.ts
-
-All TODOs complete.
+- [x] W301 lock-missing warning implemented
+- [x] Warnings now stored in lock file during resolution (W205)
+- [ ] CLI commands without integration tests: add, remove, upgrade, diff, explain, list, doctor, gc
 
 ---
 

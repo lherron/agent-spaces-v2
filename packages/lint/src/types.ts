@@ -65,6 +65,8 @@ export const WARNING_CODES = {
   PLUGIN_NAME_COLLISION: 'W205',
   NON_EXECUTABLE_HOOK_SCRIPT: 'W206',
   INVALID_PLUGIN_STRUCTURE: 'W207',
+  /** Info: Lock file was missing and had to be auto-generated */
+  LOCK_MISSING: 'W301',
 } as const
 
 export type WarningCode = (typeof WARNING_CODES)[keyof typeof WARNING_CODES]

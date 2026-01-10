@@ -11,6 +11,7 @@ import type {
   LockRegistry,
   LockSpaceEntry,
   LockTargetEntry,
+  LockWarning,
   ResolvedFrom,
   Sha256Integrity,
   SpaceKey,
@@ -19,6 +20,55 @@ import type {
 import { derivePluginIdentity } from '@agent-spaces/core'
 import type { ClosureResult, ResolvedSpace } from './closure.js'
 import { computeEnvHash, computeIntegrity } from './integrity.js'
+
+/** Warning code for plugin name collisions */
+const W205_PLUGIN_NAME_COLLISION = 'W205'
+
+/**
+ * Compute plugin name collision warnings for a target's load order.
+ *
+ * WHY: When multiple spaces produce the same plugin name, Claude may
+ * load them incorrectly. We detect this during resolution so the
+ * warning is stored in the lock file.
+ */
+function computePluginNameCollisions(
+  loadOrder: SpaceKey[],
+  allSpaces: Map<SpaceKey, ResolvedSpace>
+): LockWarning[] {
+  const warnings: LockWarning[] = []
+
+  // Map plugin name -> list of space keys that produce it
+  const pluginOwners = new Map<string, SpaceKey[]>()
+
+  for (const key of loadOrder) {
+    const space = allSpaces.get(key)
+    if (!space) continue
+
+    const identity = derivePluginIdentity(space.manifest)
+    const pluginName = identity.name
+
+    const owners = pluginOwners.get(pluginName) ?? []
+    owners.push(key)
+    pluginOwners.set(pluginName, owners)
+  }
+
+  // Report collisions
+  for (const [pluginName, owners] of pluginOwners) {
+    if (owners.length > 1) {
+      const spaceIds = owners.map((key) => key.split('@')[0]).join(', ')
+      warnings.push({
+        code: W205_PLUGIN_NAME_COLLISION,
+        message: `Plugin name '${pluginName}' is produced by multiple spaces: ${spaceIds}`,
+        details: {
+          pluginName,
+          spaces: owners,
+        },
+      })
+    }
+  }
+
+  return warnings
+}
 
 /**
  * Options for lock file generation.
@@ -131,11 +181,19 @@ export async function generateLockFile(
 
     const envHash = computeEnvHash(envHashData)
 
+    // Compute warnings for this target (W205 plugin name collisions)
+    const warnings = computePluginNameCollisions(target.closure.loadOrder, allSpaces)
+
     const targetEntry: LockTargetEntry = {
       compose: target.compose,
       roots: target.closure.roots,
       loadOrder: target.closure.loadOrder,
       envHash,
+    }
+
+    // Only include warnings field if there are warnings
+    if (warnings.length > 0) {
+      targetEntry.warnings = warnings
     }
 
     lock.targets[target.name] = targetEntry
