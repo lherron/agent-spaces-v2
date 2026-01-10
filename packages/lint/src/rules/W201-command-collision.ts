@@ -61,13 +61,16 @@ export async function checkCommandCollisions(context: LintContext): Promise<Lint
   for (const [command, owners] of commandOwners) {
     if (owners.length > 1) {
       const spaceIds = owners.map((s) => String(s.manifest.id)).join(', ')
+      // Provide disambiguation suggestions per spec: /<space-id>:<command>
+      const suggestions = owners.map((s) => `/${s.manifest.id}:${command}`).join(', ')
       warnings.push({
         code: WARNING_CODES.COMMAND_COLLISION,
-        message: `Command '${command}' is defined in multiple spaces: ${spaceIds}`,
+        message: `Command '${command}' is defined in multiple spaces: ${spaceIds}. Use qualified names: ${suggestions}`,
         severity: 'warning',
         details: {
           command,
           spaces: owners.map((s) => s.key),
+          suggestions: owners.map((s) => `/${s.manifest.id}:${command}`),
         },
       })
     }
