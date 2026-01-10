@@ -6,18 +6,17 @@
  * to extract a subtree without checking out the entire repository.
  */
 
-import { mkdir } from "node:fs/promises";
-import { join } from "node:path";
-import { gitExec } from "./exec.js";
+import { mkdir } from 'node:fs/promises'
+import { join } from 'node:path'
 
 /**
  * Options for archive extraction.
  */
 export interface ArchiveOptions {
-	/** Working directory containing the git repository */
-	cwd?: string | undefined;
-	/** Prefix to strip from archived paths (useful for extracting subdirectories) */
-	prefix?: string | undefined;
+  /** Working directory containing the git repository */
+  cwd?: string | undefined
+  /** Prefix to strip from archived paths (useful for extracting subdirectories) */
+  prefix?: string | undefined
 }
 
 /**
@@ -39,71 +38,66 @@ export interface ArchiveOptions {
  * ```
  */
 export async function extractTree(
-	commitish: string,
-	srcPath: string,
-	destPath: string,
-	options: ArchiveOptions = {}
+  commitish: string,
+  srcPath: string,
+  destPath: string,
+  options: ArchiveOptions = {}
 ): Promise<void> {
-	const { cwd } = options;
+  const { cwd } = options
 
-	// Ensure destination directory exists
-	await mkdir(destPath, { recursive: true });
+  // Ensure destination directory exists
+  await mkdir(destPath, { recursive: true })
 
-	// Build archive command
-	// git archive outputs a tar stream which we pipe to tar for extraction
-	const archiveArgs = ["archive", "--format=tar", commitish];
+  // Build archive command
+  // git archive outputs a tar stream which we pipe to tar for extraction
+  const archiveArgs = ['archive', '--format=tar', commitish]
 
-	// If srcPath is specified, only archive that subtree
-	if (srcPath) {
-		archiveArgs.push(srcPath);
-	}
+  // If srcPath is specified, only archive that subtree
+  if (srcPath) {
+    archiveArgs.push(srcPath)
+  }
 
-	// Create archive and extract in one pipeline
-	// We use Bun.spawn directly for pipeline support
-	const archiveSpawnOpts: {
-		cwd?: string;
-		stdout: "pipe";
-		stderr: "pipe";
-	} = {
-		stdout: "pipe",
-		stderr: "pipe",
-	};
-	if (cwd !== undefined) {
-		archiveSpawnOpts.cwd = cwd;
-	}
-	const archiveProc = Bun.spawn(["git", ...archiveArgs], archiveSpawnOpts);
+  // Create archive and extract in one pipeline
+  // We use Bun.spawn directly for pipeline support
+  const archiveSpawnOpts: {
+    cwd?: string
+    stdout: 'pipe'
+    stderr: 'pipe'
+  } = {
+    stdout: 'pipe',
+    stderr: 'pipe',
+  }
+  if (cwd !== undefined) {
+    archiveSpawnOpts.cwd = cwd
+  }
+  const archiveProc = Bun.spawn(['git', ...archiveArgs], archiveSpawnOpts)
 
-	// Determine strip-components based on srcPath depth
-	const stripComponents = srcPath ? srcPath.split("/").filter(Boolean).length : 0;
+  // Determine strip-components based on srcPath depth
+  const stripComponents = srcPath ? srcPath.split('/').filter(Boolean).length : 0
 
-	const tarArgs = ["-x", "-C", destPath];
-	if (stripComponents > 0) {
-		tarArgs.push(`--strip-components=${stripComponents}`);
-	}
+  const tarArgs = ['-x', '-C', destPath]
+  if (stripComponents > 0) {
+    tarArgs.push(`--strip-components=${stripComponents}`)
+  }
 
-	const tarProc = Bun.spawn(["tar", ...tarArgs], {
-		stdin: archiveProc.stdout,
-		stdout: "pipe",
-		stderr: "pipe",
-	});
+  const tarProc = Bun.spawn(['tar', ...tarArgs], {
+    stdin: archiveProc.stdout,
+    stdout: 'pipe',
+    stderr: 'pipe',
+  })
 
-	// Wait for both processes
-	const [archiveExitCode, tarExitCode] = await Promise.all([
-		archiveProc.exited,
-		tarProc.exited,
-	]);
+  // Wait for both processes
+  const [archiveExitCode, tarExitCode] = await Promise.all([archiveProc.exited, tarProc.exited])
 
-	if (archiveExitCode !== 0) {
-		const stderr = await new Response(archiveProc.stderr).text();
-		throw new Error(
-			`Git archive failed (exit ${archiveExitCode}): ${stderr.trim()}`
-		);
-	}
+  if (archiveExitCode !== 0) {
+    const stderr = await new Response(archiveProc.stderr).text()
+    throw new Error(`Git archive failed (exit ${archiveExitCode}): ${stderr.trim()}`)
+  }
 
-	if (tarExitCode !== 0) {
-		const stderr = await new Response(tarProc.stderr).text();
-		throw new Error(`Tar extraction failed (exit ${tarExitCode}): ${stderr.trim()}`);
-	}
+  if (tarExitCode !== 0) {
+    const stderr = await new Response(tarProc.stderr).text()
+    throw new Error(`Tar extraction failed (exit ${tarExitCode}): ${stderr.trim()}`)
+  }
 }
 
 /**
@@ -122,16 +116,16 @@ export async function extractTree(
  * ```
  */
 export async function extractTreeToTemp(
-	commitish: string,
-	srcPath: string,
-	options: ArchiveOptions = {}
+  commitish: string,
+  srcPath: string,
+  options: ArchiveOptions = {}
 ): Promise<string> {
-	const tmpDir = join(
-		process.env["TMPDIR"] || "/tmp",
-		`asp-extract-${Date.now()}-${Math.random().toString(36).slice(2)}`
-	);
-	await extractTree(commitish, srcPath, tmpDir, options);
-	return tmpDir;
+  const tmpDir = join(
+    process.env['TMPDIR'] || '/tmp',
+    `asp-extract-${Date.now()}-${Math.random().toString(36).slice(2)}`
+  )
+  await extractTree(commitish, srcPath, tmpDir, options)
+  return tmpDir
 }
 
 /**
@@ -143,37 +137,37 @@ export async function extractTreeToTemp(
  * @returns Tar archive as a Buffer
  */
 export async function getArchiveBuffer(
-	commitish: string,
-	srcPath: string,
-	options: { cwd?: string | undefined } = {}
+  commitish: string,
+  srcPath: string,
+  options: { cwd?: string | undefined } = {}
 ): Promise<Buffer> {
-	const { cwd } = options;
+  const { cwd } = options
 
-	const archiveArgs = ["archive", "--format=tar", commitish];
-	if (srcPath) {
-		archiveArgs.push(srcPath);
-	}
+  const archiveArgs = ['archive', '--format=tar', commitish]
+  if (srcPath) {
+    archiveArgs.push(srcPath)
+  }
 
-	const bufferSpawnOpts: {
-		cwd?: string;
-		stdout: "pipe";
-		stderr: "pipe";
-	} = {
-		stdout: "pipe",
-		stderr: "pipe",
-	};
-	if (cwd !== undefined) {
-		bufferSpawnOpts.cwd = cwd;
-	}
-	const proc = Bun.spawn(["git", ...archiveArgs], bufferSpawnOpts);
+  const bufferSpawnOpts: {
+    cwd?: string
+    stdout: 'pipe'
+    stderr: 'pipe'
+  } = {
+    stdout: 'pipe',
+    stderr: 'pipe',
+  }
+  if (cwd !== undefined) {
+    bufferSpawnOpts.cwd = cwd
+  }
+  const proc = Bun.spawn(['git', ...archiveArgs], bufferSpawnOpts)
 
-	const exitCode = await proc.exited;
+  const exitCode = await proc.exited
 
-	if (exitCode !== 0) {
-		const stderr = await new Response(proc.stderr).text();
-		throw new Error(`Git archive failed (exit ${exitCode}): ${stderr.trim()}`);
-	}
+  if (exitCode !== 0) {
+    const stderr = await new Response(proc.stderr).text()
+    throw new Error(`Git archive failed (exit ${exitCode}): ${stderr.trim()}`)
+  }
 
-	const arrayBuffer = await new Response(proc.stdout).arrayBuffer();
-	return Buffer.from(arrayBuffer);
+  const arrayBuffer = await new Response(proc.stdout).arrayBuffer()
+  return Buffer.from(arrayBuffer)
 }
