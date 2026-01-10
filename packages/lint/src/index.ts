@@ -23,6 +23,7 @@ export { formatWarnings, formatText, formatJson, summarize } from './reporter.js
 // Individual rules
 export {
   checkCommandCollisions,
+  checkAgentCommandNamespace,
   checkHookPaths,
   checkHooksConfig,
   checkPluginNameCollisions,

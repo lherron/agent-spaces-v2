@@ -96,6 +96,7 @@
 
 ### packages/lint - Warning Detection (COMPLETE)
 - [x] `src/rules/W201-command-collision.ts` - Same command in multiple spaces
+- [x] `src/rules/W202-agent-command-namespace.ts` - Agent doc references unqualified `/command` provided by plugin space
 - [x] `src/rules/W203-hook-path-no-plugin-root.ts` - Hook path missing `${CLAUDE_PLUGIN_ROOT}`
 - [x] `src/rules/W204-invalid-hooks-config.ts` - hooks/ exists but hooks.json missing/invalid
 - [x] `src/rules/W205-plugin-name-collision.ts` - Two spaces produce same plugin name
@@ -103,7 +104,7 @@
 - [x] `src/reporter.ts` - Warning output formatter
 - [x] `src/index.ts` - Public exports
 - [x] `package.json` - Package setup
-- [x] Unit tests for each rule (30 tests)
+- [x] Unit tests for each rule (38 tests)
 
 ---
 

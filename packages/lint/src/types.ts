@@ -59,7 +59,7 @@ export type LintRule = (context: LintContext) => Promise<LintWarning[]> | LintWa
  */
 export const WARNING_CODES = {
   COMMAND_COLLISION: 'W201',
-  // W202 reserved for agent-command-namespace
+  AGENT_COMMAND_NAMESPACE: 'W202',
   HOOK_PATH_NO_PLUGIN_ROOT: 'W203',
   INVALID_HOOKS_CONFIG: 'W204',
   PLUGIN_NAME_COLLISION: 'W205',

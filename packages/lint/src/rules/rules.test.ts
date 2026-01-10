@@ -13,6 +13,7 @@ import type { SpaceId, SpaceKey, SpaceManifest } from '@agent-spaces/core'
 import type { LintContext, SpaceLintData } from '../types.js'
 import { WARNING_CODES } from '../types.js'
 import { checkCommandCollisions } from './W201-command-collision.js'
+import { checkAgentCommandNamespace } from './W202-agent-command-namespace.js'
 import { checkHookPaths } from './W203-hook-path-no-plugin-root.js'
 import { checkHooksConfig } from './W204-invalid-hooks-config.js'
 import { checkPluginNameCollisions } from './W205-plugin-name-collision.js'
@@ -102,6 +103,178 @@ describe('W201: checkCommandCollisions', () => {
     }
 
     const warnings = await checkCommandCollisions(context)
+    expect(warnings).toHaveLength(0)
+  })
+})
+
+describe('W202: checkAgentCommandNamespace', () => {
+  it('should return no warnings when no agents directory', async () => {
+    const plugin = join(tempDir, 'plugin')
+    await mkdir(join(plugin, 'commands'), { recursive: true })
+    await writeFile(join(plugin, 'commands', 'build.md'), '# Build')
+
+    const context: LintContext = {
+      spaces: [
+        createSpaceLintData('space1@abc123', createManifest({ id: 'space1' as SpaceId }), plugin),
+      ],
+    }
+
+    const warnings = await checkAgentCommandNamespace(context)
+    expect(warnings).toHaveLength(0)
+  })
+
+  it('should return no warnings when agents use qualified commands', async () => {
+    const plugin = join(tempDir, 'plugin')
+    await mkdir(join(plugin, 'commands'), { recursive: true })
+    await mkdir(join(plugin, 'agents'), { recursive: true })
+    await writeFile(join(plugin, 'commands', 'build.md'), '# Build')
+    await writeFile(
+      join(plugin, 'agents', 'reviewer.md'),
+      '# Reviewer\n\nUse /space1:build to build the project.'
+    )
+
+    const context: LintContext = {
+      spaces: [
+        createSpaceLintData('space1@abc123', createManifest({ id: 'space1' as SpaceId }), plugin),
+      ],
+    }
+
+    const warnings = await checkAgentCommandNamespace(context)
+    expect(warnings).toHaveLength(0)
+  })
+
+  it('should warn when agent references unqualified command from plugin space', async () => {
+    const plugin = join(tempDir, 'plugin')
+    await mkdir(join(plugin, 'commands'), { recursive: true })
+    await mkdir(join(plugin, 'agents'), { recursive: true })
+    await writeFile(join(plugin, 'commands', 'deploy.md'), '# Deploy')
+    await writeFile(
+      join(plugin, 'agents', 'reviewer.md'),
+      '# Reviewer\n\nUse /deploy to deploy the project.'
+    )
+
+    const context: LintContext = {
+      spaces: [
+        createSpaceLintData('space1@abc123', createManifest({ id: 'space1' as SpaceId }), plugin),
+      ],
+    }
+
+    const warnings = await checkAgentCommandNamespace(context)
+    expect(warnings).toHaveLength(1)
+    expect(warnings[0]?.code).toBe(WARNING_CODES.AGENT_COMMAND_NAMESPACE)
+    expect(warnings[0]?.message).toContain('/deploy')
+    expect(warnings[0]?.message).toContain('/space1:deploy')
+  })
+
+  it('should not warn for unqualified commands not provided by any space', async () => {
+    const plugin = join(tempDir, 'plugin')
+    await mkdir(join(plugin, 'agents'), { recursive: true })
+    await writeFile(
+      join(plugin, 'agents', 'reviewer.md'),
+      '# Reviewer\n\nUse /some-external-command to do something.'
+    )
+
+    const context: LintContext = {
+      spaces: [
+        createSpaceLintData('space1@abc123', createManifest({ id: 'space1' as SpaceId }), plugin),
+      ],
+    }
+
+    const warnings = await checkAgentCommandNamespace(context)
+    expect(warnings).toHaveLength(0)
+  })
+
+  it('should detect multiple unqualified commands in same file', async () => {
+    const plugin = join(tempDir, 'plugin')
+    await mkdir(join(plugin, 'commands'), { recursive: true })
+    await mkdir(join(plugin, 'agents'), { recursive: true })
+    await writeFile(join(plugin, 'commands', 'build.md'), '# Build')
+    await writeFile(join(plugin, 'commands', 'test.md'), '# Test')
+    await writeFile(
+      join(plugin, 'agents', 'dev.md'),
+      '# Developer\n\nFirst /build and then /test the project.'
+    )
+
+    const context: LintContext = {
+      spaces: [
+        createSpaceLintData('space1@abc123', createManifest({ id: 'space1' as SpaceId }), plugin),
+      ],
+    }
+
+    const warnings = await checkAgentCommandNamespace(context)
+    expect(warnings).toHaveLength(2)
+  })
+
+  it('should recommend plugin name from manifest if specified', async () => {
+    const plugin = join(tempDir, 'plugin')
+    await mkdir(join(plugin, 'commands'), { recursive: true })
+    await mkdir(join(plugin, 'agents'), { recursive: true })
+    await writeFile(join(plugin, 'commands', 'deploy.md'), '# Deploy')
+    await writeFile(
+      join(plugin, 'agents', 'reviewer.md'),
+      '# Reviewer\n\nUse /deploy to deploy.'
+    )
+
+    const context: LintContext = {
+      spaces: [
+        createSpaceLintData(
+          'space1@abc123',
+          createManifest({ id: 'space1' as SpaceId, plugin: { name: 'my-custom-plugin' } }),
+          plugin
+        ),
+      ],
+    }
+
+    const warnings = await checkAgentCommandNamespace(context)
+    expect(warnings).toHaveLength(1)
+    expect(warnings[0]?.message).toContain('/my-custom-plugin:deploy')
+  })
+
+  it('should suggest multiple spaces when command is in multiple spaces', async () => {
+    const plugin1 = join(tempDir, 'plugin1')
+    const plugin2 = join(tempDir, 'plugin2')
+
+    await mkdir(join(plugin1, 'commands'), { recursive: true })
+    await mkdir(join(plugin2, 'commands'), { recursive: true })
+    await mkdir(join(plugin1, 'agents'), { recursive: true })
+
+    await writeFile(join(plugin1, 'commands', 'shared.md'), '# Shared 1')
+    await writeFile(join(plugin2, 'commands', 'shared.md'), '# Shared 2')
+    await writeFile(
+      join(plugin1, 'agents', 'coordinator.md'),
+      '# Coordinator\n\nUse /shared to run.'
+    )
+
+    const context: LintContext = {
+      spaces: [
+        createSpaceLintData('space1@abc123', createManifest({ id: 'space1' as SpaceId }), plugin1),
+        createSpaceLintData('space2@def456', createManifest({ id: 'space2' as SpaceId }), plugin2),
+      ],
+    }
+
+    const warnings = await checkAgentCommandNamespace(context)
+    expect(warnings).toHaveLength(1)
+    expect(warnings[0]?.message).toContain('/space1:shared')
+    expect(warnings[0]?.message).toContain('/space2:shared')
+  })
+
+  it('should not match URLs or paths that look like commands', async () => {
+    const plugin = join(tempDir, 'plugin')
+    await mkdir(join(plugin, 'commands'), { recursive: true })
+    await mkdir(join(plugin, 'agents'), { recursive: true })
+    await writeFile(join(plugin, 'commands', 'build.md'), '# Build')
+    await writeFile(
+      join(plugin, 'agents', 'reviewer.md'),
+      '# Reviewer\n\nVisit https://example.com/build or /path/to/build for docs.'
+    )
+
+    const context: LintContext = {
+      spaces: [
+        createSpaceLintData('space1@abc123', createManifest({ id: 'space1' as SpaceId }), plugin),
+      ],
+    }
+
+    const warnings = await checkAgentCommandNamespace(context)
     expect(warnings).toHaveLength(0)
   })
 })
