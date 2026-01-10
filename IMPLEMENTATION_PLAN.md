@@ -2,7 +2,7 @@
 
 ## Current Status
 
-**Completed**: 100% (all 9 packages implemented)
+**Completed**: 100% (all 9 packages + manager space implemented)
 
 ### Packages Status
 
@@ -17,6 +17,7 @@
 | lint | COMPLETE | W201-W206 rules, reporter, 30 tests |
 | engine | COMPLETE | resolve, install, build, run, explain orchestration |
 | cli | COMPLETE | All commands implemented: run, install, build, explain, lint, list, doctor, gc, add, remove, upgrade, diff, repo/* |
+| manager-space | COMPLETE | space.toml, 8 commands, 1 skill, 1 agent |
 
 ---
 
@@ -152,20 +153,20 @@
 
 ---
 
-## Priority 8: Manager Space
+## Priority 8: Manager Space (COMPLETE)
 
-### spaces/agent-spaces-manager - Built-in Management Space
-- [ ] `space.toml` - Space manifest
-- [ ] `commands/help.md` - Show available asp commands
-- [ ] `commands/create-space.md` - Scaffold new space with correct layout
-- [ ] `commands/add-skill.md` - Add skill with best-practice template
-- [ ] `commands/add-command.md` - Add command with template
-- [ ] `commands/add-hook.md` - Add hook with validation
-- [ ] `commands/bump-version.md` - Update version in space.toml
-- [ ] `commands/publish.md` - Run asp repo publish
-- [ ] `commands/update-project-targets.md` - Help update project asp-targets.toml
-- [ ] `skills/space-authoring/SKILL.md` - Guide for creating spaces
-- [ ] `agents/manager.md` - Coordinator agent for repo + project workflows
+### spaces/agent-spaces-manager - Built-in Management Space (COMPLETE)
+- [x] `space.toml` - Space manifest with id, version, description, plugin metadata
+- [x] `commands/help.md` - Show available asp commands and manager space commands
+- [x] `commands/create-space.md` - Scaffold new space with correct layout
+- [x] `commands/add-skill.md` - Add skill with best-practice template
+- [x] `commands/add-command.md` - Add command with template
+- [x] `commands/add-hook.md` - Add hook with validation, ${CLAUDE_PLUGIN_ROOT} guidance
+- [x] `commands/bump-version.md` - Update version in space.toml (major/minor/patch)
+- [x] `commands/publish.md` - Run asp repo publish with dist-tag support
+- [x] `commands/update-project-targets.md` - Help update project asp-targets.toml
+- [x] `skills/space-authoring/SKILL.md` - Comprehensive guide for creating spaces
+- [x] `agents/manager.md` - Coordinator agent for repo + project workflows
 
 ---
 
@@ -186,7 +187,13 @@
 
 ## Known Issues & TODOs to Investigate
 
-- [ ] Search for TODO comments in existing code
+### TODOs Found in Code
+- [ ] `packages/cli/src/commands/upgrade.ts:61-62` - Filter space by ID in upgrade command (requires engine changes)
+- [ ] `packages/engine/src/install.ts:188` - Compare manifest with lock file in installNeeded() (optimization)
+- [ ] `packages/engine/src/index.test.ts:12-17` - Integration tests for engine modules
+- [ ] `packages/core/src/index.test.ts:12-17` - Unit tests for core modules
+
+### Other Items
 - [ ] Verify all core package exports are correct
 - [x] Add unit tests for packages/core (placeholder added)
 - [x] Add integration tests for packages/engine (placeholder added)
