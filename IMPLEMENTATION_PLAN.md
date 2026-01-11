@@ -1,8 +1,8 @@
 # Multi-Harness Implementation Plan
 
-> **Status:** Phase 4.3 Complete
+> **Status:** Phase 5.1 Complete
 > **Spec:** specs/MULTI-HARNESS-SPEC-PROPOSED.md
-> **Current Phase:** 4 - Full Multi-Harness
+> **Current Phase:** 5 - Multi-Harness Smoke Testing
 
 ## Overview
 
@@ -239,9 +239,15 @@ The implementation follows a 4-phase migration path from the spec:
 - Added W304 warning code: PI_PERMISSION_LINT_ONLY
 - Added 51 tests for permissions.toml parsing and translation
 
-**Next:** Phase 5 - Multi-Harness Smoke Testing
-- Create test fixtures for multi-harness configurations
-- Manual smoke testing with actual harnesses
+**Completed:** Phase 5.1 - Test Fixtures Setup
+- Created `integration-tests/fixtures/multi-harness/` with:
+  - `claude-only/` - Space with commands, MCP, and skills
+  - `pi-only/` - Space with extensions and skills
+  - `multi-harness/` - Space with AGENT.md, commands, extensions, hooks.toml, permissions.toml, skills
+  - `multi-harness-project/` - Project with asp-targets.toml targeting all spaces
+
+**Next:** Phase 5.2-5.10 - Smoke Testing
+- Run smoke tests with actual harnesses
 
 ---
 
@@ -249,12 +255,12 @@ The implementation follows a 4-phase migration path from the spec:
 
 Manual smoke testing of multi-harness configurations using actual harnesses in non-interactive mode.
 
-### 5.1 Test Fixtures Setup
-- [ ] Create `integration-tests/fixtures/multi-harness/` directory
-- [ ] Create Claude-only space (`claude-only/`) with commands, MCP, skills
-- [ ] Create Pi-only space (`pi-only/`) with extensions, skills
-- [ ] Create multi-harness space (`multi-harness/`) with AGENT.md, skills, hooks
-- [ ] Create project with `asp-targets.toml` targeting all three spaces
+### 5.1 Test Fixtures Setup ✅
+- [x] Create `integration-tests/fixtures/multi-harness/` directory
+- [x] Create Claude-only space (`claude-only/`) with commands, MCP, skills
+- [x] Create Pi-only space (`pi-only/`) with extensions, skills
+- [x] Create multi-harness space (`multi-harness/`) with AGENT.md, skills, hooks, permissions.toml
+- [x] Create project with `asp-targets.toml` targeting all three spaces
 
 ### 5.2 Claude Harness Smoke Tests
 Run each with `--dry-run` first, then with actual `claude` binary using `--print` (non-interactive):
