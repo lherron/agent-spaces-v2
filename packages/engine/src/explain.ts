@@ -27,7 +27,6 @@ import { type LintContext, type LintWarning, type SpaceLintData, lint } from '@a
 import {
   COMPONENT_DIRS,
   type ComponentDir,
-  type HooksConfig,
   type McpConfig,
   type McpServerConfig,
 } from '@agent-spaces/materializer'
@@ -196,10 +195,19 @@ async function isDirectory(path: string): Promise<boolean> {
 }
 
 /**
- * Claude Code hooks.json format (event names as keys).
+ * Simple hook definition format (old format with event/script).
  */
-interface ClaudeHooksConfig {
-  hooks: Record<string, unknown[]>
+interface SimpleHookDef {
+  event: string
+  script: string
+}
+
+/**
+ * Claude native hook definition format (array with matcher/hooks).
+ */
+interface ClaudeNativeHookDef {
+  matcher: string
+  hooks: Array<{ command: string }>
 }
 
 /**
@@ -212,7 +220,7 @@ export interface HookInfo {
 
 /**
  * Read hooks.json from a directory and extract event names.
- * Handles both old format (array) and Claude Code format (object with event keys).
+ * Handles both simple format (array with event/script) and Claude native format (array with matcher/hooks).
  */
 async function readHooksFromDir(dir: string): Promise<HookInfo[] | undefined> {
   const hooksJsonPath = join(dir, 'hooks', 'hooks.json')
@@ -220,19 +228,30 @@ async function readHooksFromDir(dir: string): Promise<HookInfo[] | undefined> {
     const content = await readFile(hooksJsonPath, 'utf-8')
     const config = JSON.parse(content)
 
-    // Check for Claude Code format (hooks is an object with event names as keys)
-    if (config.hooks && typeof config.hooks === 'object' && !Array.isArray(config.hooks)) {
-      const claudeConfig = config as ClaudeHooksConfig
-      return Object.entries(claudeConfig.hooks).map(([event, handlers]) => ({
-        event,
-        count: Array.isArray(handlers) ? handlers.length : 1,
+    if (!config.hooks || !Array.isArray(config.hooks)) {
+      return undefined
+    }
+
+    // Check first element to determine format
+    const first = config.hooks[0]
+    if (!first) {
+      return []
+    }
+
+    // Claude native format: [{matcher, hooks: [{command}]}]
+    if ('matcher' in first && 'hooks' in first) {
+      return (config.hooks as ClaudeNativeHookDef[]).map((h) => ({
+        event: h.matcher,
+        count: h.hooks?.length ?? 0,
       }))
     }
 
-    // Old format (hooks is an array with event/script properties)
-    if (config.hooks && Array.isArray(config.hooks)) {
-      const oldConfig = config as HooksConfig
-      return oldConfig.hooks.map((h) => ({ event: h.event, count: 1 }))
+    // Simple format: [{event, script}]
+    if ('event' in first) {
+      return (config.hooks as SimpleHookDef[]).map((h) => ({
+        event: h.event,
+        count: 1,
+      }))
     }
 
     return undefined

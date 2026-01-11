@@ -1,6 +1,6 @@
 # Multi-Harness Implementation Plan
 
-> **Status:** Phase 5.1 Complete
+> **Status:** Phase 5.2 Complete
 > **Spec:** specs/MULTI-HARNESS-SPEC-PROPOSED.md
 > **Current Phase:** 5 - Multi-Harness Smoke Testing
 
@@ -246,8 +246,21 @@ The implementation follows a 4-phase migration path from the spec:
   - `multi-harness/` - Space with AGENT.md, commands, extensions, hooks.toml, permissions.toml, skills
   - `multi-harness-project/` - Project with asp-targets.toml targeting all spaces
 
-**Next:** Phase 5.2-5.10 - Smoke Testing
-- Run smoke tests with actual harnesses
+**Completed:** Phase 5.2 - Claude Harness Smoke Tests
+- Fixed engine (install.ts) to use harness adapter's `materializeSpace()` instead of direct `materializeSpaces()` call
+- This enables hooks.toml → hooks.json conversion during Claude materialization
+- Updated `validateHooks()` and `ensureHooksExecutable()` to handle both hook formats:
+  - Simple format: `{hooks: [{event, script}]}`
+  - Claude native format: `{hooks: [{matcher, hooks: [{command}]}]}`
+- Updated `readHooksWithPrecedence()` to parse Claude's native hooks.json format for backwards compatibility
+- Fixed explain.ts to handle both hook formats without type errors
+- Removed Phase 1 restrictions from CLI commands (pi harness now accessible)
+- Verified hooks.toml conversion with smoke test: `pre_tool_use` → `PreToolUse`, scripts prefixed with `${CLAUDE_PLUGIN_ROOT}/`
+
+**Next:** Phase 5.3-5.10 - Additional Smoke Testing
+- Pi harness smoke tests (requires pi binary)
+- Multi-harness target tests
+- Manual testing of remaining scenarios
 
 ---
 
@@ -262,22 +275,30 @@ Manual smoke testing of multi-harness configurations using actual harnesses in n
 - [x] Create multi-harness space (`multi-harness/`) with AGENT.md, skills, hooks, permissions.toml
 - [x] Create project with `asp-targets.toml` targeting all three spaces
 
-### 5.2 Claude Harness Smoke Tests
+### 5.2 Claude Harness Smoke Tests ✅
 Run each with `--dry-run` first, then with actual `claude` binary using `--print` (non-interactive):
 
-- [ ] Basic Claude run: `asp run claude-target --harness claude --dry-run`
-- [ ] Verify `--plugin-dir` flags point to `asp_modules/<target>/claude/plugins/`
-- [ ] Verify `--mcp-config` points to composed `mcp.json`
-- [ ] Verify `--settings` points to composed `settings.json`
-- [ ] Test with `--inherit-project` / `--inherit-user` flags
-- [ ] Test with explicit `--model` override
-- [ ] Verify AGENT.md → CLAUDE.md renaming in output
-- [ ] Run `asp explain <target> --harness claude` and verify output
+- [x] Basic Claude run: `asp run claude-target --harness claude --dry-run`
+- [x] Verify `--plugin-dir` flags point to `asp_modules/<target>/claude/plugins/`
+- [x] Verify `--settings` points to composed `settings.json`
+- [x] Verify hooks.toml → hooks.json conversion works correctly
+- [ ] Test with `--inherit-project` / `--inherit-user` flags (manual testing)
+- [ ] Test with explicit `--model` override (manual testing)
+- [ ] Verify AGENT.md → CLAUDE.md renaming in output (manual testing)
+- [ ] Run `asp explain <target> --harness claude` and verify output (manual testing)
 
 Non-interactive execution (requires Claude):
 ```bash
 echo "What tools do you have?" | asp run <target> --harness claude --print
 ```
+
+**Key fixes completed during Phase 5.2:**
+1. Fixed engine (install.ts) to use harness adapter's `materializeSpace()` for hooks.toml→hooks.json conversion
+2. Updated `validateHooks()` to handle both simple format and Claude's native hooks.json format
+3. Updated `ensureHooksExecutable()` to work with both hook formats
+4. Updated `readHooksWithPrecedence()` to parse Claude's native hooks.json format
+5. Fixed explain.ts to handle both hook formats without type errors
+6. Removed Phase 1 restrictions from CLI commands (pi harness now accessible)
 
 ### 5.3 Pi Harness Smoke Tests
 Run each with `--dry-run` first, then with actual `pi` binary using non-interactive mode:

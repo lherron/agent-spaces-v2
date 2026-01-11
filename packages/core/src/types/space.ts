@@ -58,6 +58,42 @@ export interface SpaceSettings {
   model?: string | undefined
 }
 
+/** Multi-harness support configuration */
+export interface SpaceHarnessConfig {
+  /** List of harnesses this space supports */
+  supports?: Array<'claude' | 'pi'> | undefined
+}
+
+/** Claude-specific space configuration */
+export interface SpaceClaudeConfig {
+  /** Claude model override */
+  model?: string | undefined
+  /** Explicit MCP config paths (otherwise auto-discover mcp/) */
+  mcp?: string[] | undefined
+}
+
+/** Pi extension build configuration */
+export interface SpacePiBuildConfig {
+  /** Bundle extensions to JS (default: true) */
+  bundle?: boolean | undefined
+  /** Output format: esm or cjs (default: esm) */
+  format?: 'esm' | 'cjs' | undefined
+  /** Target runtime: bun or node (default: bun) */
+  target?: 'bun' | 'node' | undefined
+  /** Dependencies to exclude from bundle */
+  external?: string[] | undefined
+}
+
+/** Pi-specific space configuration */
+export interface SpacePiConfig {
+  /** Pi model override (e.g., claude-sonnet) */
+  model?: string | undefined
+  /** Extension files to load */
+  extensions?: string[] | undefined
+  /** Extension build configuration */
+  build?: SpacePiBuildConfig | undefined
+}
+
 /**
  * Space manifest (space.toml)
  *
@@ -79,6 +115,12 @@ export interface SpaceManifest {
   deps?: SpaceDeps
   /** Claude settings to apply when running with this space */
   settings?: SpaceSettings | undefined
+  /** Multi-harness support configuration */
+  harness?: SpaceHarnessConfig | undefined
+  /** Claude-specific configuration */
+  claude?: SpaceClaudeConfig | undefined
+  /** Pi-specific configuration */
+  pi?: SpacePiConfig | undefined
 }
 
 // ============================================================================

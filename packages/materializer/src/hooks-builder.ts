@@ -3,13 +3,17 @@
  *
  * WHY: Hooks allow spaces to execute scripts in response to Claude events.
  * We need to validate hooks.json exists and scripts are executable.
+ *
+ * Supports two formats:
+ * 1. Simple format: {hooks: [{event, script}, ...]}
+ * 2. Claude's native format: {hooks: [{matcher, hooks: [{command}, ...]}, ...]}
  */
 
 import { constants, access, chmod, readFile, stat } from 'node:fs/promises'
 import { join } from 'node:path'
 
 /**
- * Hook definition from hooks.json.
+ * Hook definition from hooks.json (simple format).
  */
 export interface HookDefinition {
   /** Event type to trigger on */
@@ -21,11 +25,27 @@ export interface HookDefinition {
 }
 
 /**
+ * Claude's native hook definition.
+ */
+export interface ClaudeNativeHookDefinition {
+  /** Event matcher (e.g., 'PreToolUse', 'PostToolUse', 'Stop') */
+  matcher: string
+  /** Array of hook configurations */
+  hooks: Array<{
+    /** Command path (may use ${CLAUDE_PLUGIN_ROOT}) */
+    command: string
+    /** Optional timeout in milliseconds */
+    timeout_ms?: number | undefined
+  }>
+}
+
+/**
  * Hooks configuration file structure.
+ * Supports both simple and Claude's native format.
  */
 export interface HooksConfig {
-  /** Array of hook definitions */
-  hooks: HookDefinition[]
+  /** Array of hook definitions (simple format) */
+  hooks: HookDefinition[] | ClaudeNativeHookDefinition[]
 }
 
 /**
@@ -41,6 +61,14 @@ export interface HookValidationResult {
 }
 
 /**
+ * Normalized hook for validation purposes.
+ */
+interface NormalizedHook {
+  /** Script path relative to hooks directory */
+  script: string
+}
+
+/**
  * Read and parse hooks.json from a directory.
  */
 export async function readHooksConfig(dir: string): Promise<HooksConfig | null> {
@@ -52,6 +80,48 @@ export async function readHooksConfig(dir: string): Promise<HooksConfig | null> 
   } catch {
     return null
   }
+}
+
+/**
+ * Check if hooks config is in Claude's native format.
+ */
+function isClaudeNativeFormat(config: HooksConfig): boolean {
+  if (!config.hooks || !Array.isArray(config.hooks) || config.hooks.length === 0) {
+    return false
+  }
+  const first = config.hooks[0]
+  // Claude native format has 'matcher' and 'hooks' array
+  return first !== undefined && 'matcher' in first && 'hooks' in first && Array.isArray(first.hooks)
+}
+
+/**
+ * Normalize hooks to a common format for validation.
+ */
+function normalizeHooks(config: HooksConfig): NormalizedHook[] {
+  if (!config.hooks || !Array.isArray(config.hooks)) {
+    return []
+  }
+
+  if (isClaudeNativeFormat(config)) {
+    // Claude native format: extract scripts from nested hooks
+    const normalized: NormalizedHook[] = []
+    for (const hook of config.hooks as ClaudeNativeHookDefinition[]) {
+      for (const cmd of hook.hooks ?? []) {
+        if (cmd.command) {
+          // Extract script path from command
+          // ${CLAUDE_PLUGIN_ROOT}/hooks/script.sh -> hooks/script.sh
+          const script = cmd.command
+            .replace(/^\$\{CLAUDE_PLUGIN_ROOT\}\//, '')
+            .replace(/^hooks\//, '') // Remove hooks/ prefix if present
+          normalized.push({ script })
+        }
+      }
+    }
+    return normalized
+  }
+
+  // Simple format: use script directly
+  return (config.hooks as HookDefinition[]).map((h) => ({ script: h.script }))
 }
 
 /**
@@ -110,8 +180,16 @@ export async function validateHooks(dir: string): Promise<HookValidationResult> 
     return result
   }
 
+  // Normalize hooks for validation (handles both simple and Claude native formats)
+  const normalizedHooks = normalizeHooks(config)
+
   // Validate each hook
-  for (const hook of config.hooks) {
+  for (const hook of normalizedHooks) {
+    if (!hook.script) {
+      result.warnings.push('Hook definition has empty script path')
+      continue
+    }
+
     const scriptPath = join(hooksDir, hook.script)
 
     // Check script exists
@@ -148,7 +226,12 @@ export async function ensureHooksExecutable(dir: string): Promise<void> {
 
   const hooksDir = join(dir, 'hooks')
 
-  for (const hook of config.hooks) {
+  // Normalize hooks (handles both simple and Claude native formats)
+  const normalizedHooks = normalizeHooks(config)
+
+  for (const hook of normalizedHooks) {
+    if (!hook.script) continue
+
     const scriptPath = join(hooksDir, hook.script)
     try {
       if (!(await isExecutable(scriptPath))) {
@@ -171,10 +254,13 @@ export function checkHookPaths(config: HooksConfig): string[] {
     return warnings
   }
 
-  for (const hook of config.hooks) {
+  // Normalize hooks (handles both simple and Claude native formats)
+  const normalizedHooks = normalizeHooks(config)
+
+  for (const hook of normalizedHooks) {
     // This is a simple heuristic - in real usage, we'd check if paths
     // in the script reference files without using CLAUDE_PLUGIN_ROOT
-    if (hook.script.includes('..')) {
+    if (hook.script?.includes('..')) {
       warnings.push(`Hook script uses relative path that may not work: ${hook.script}`)
     }
   }

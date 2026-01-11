@@ -107,6 +107,86 @@
           "description": "Override the default Claude model"
         }
       }
+    },
+
+    "harness": {
+      "type": "object",
+      "description": "Multi-harness support configuration",
+      "additionalProperties": false,
+      "properties": {
+        "supports": {
+          "type": "array",
+          "description": "List of harnesses this space supports (claude, pi)",
+          "items": {
+            "type": "string",
+            "enum": ["claude", "pi"]
+          },
+          "uniqueItems": true
+        }
+      }
+    },
+
+    "claude": {
+      "type": "object",
+      "description": "Claude-specific configuration",
+      "additionalProperties": false,
+      "properties": {
+        "model": {
+          "type": "string",
+          "description": "Claude model override"
+        },
+        "mcp": {
+          "type": "array",
+          "description": "Explicit MCP config paths (otherwise auto-discover mcp/)",
+          "items": { "type": "string" }
+        }
+      }
+    },
+
+    "pi": {
+      "type": "object",
+      "description": "Pi-specific configuration",
+      "additionalProperties": false,
+      "properties": {
+        "model": {
+          "type": "string",
+          "description": "Pi model override (e.g., claude-sonnet)"
+        },
+        "extensions": {
+          "type": "array",
+          "description": "Extension files to load",
+          "items": { "type": "string" }
+        },
+        "build": {
+          "type": "object",
+          "description": "Extension build configuration",
+          "additionalProperties": false,
+          "properties": {
+            "bundle": {
+              "type": "boolean",
+              "description": "Bundle extensions to JS (default: true)",
+              "default": true
+            },
+            "format": {
+              "type": "string",
+              "description": "Output format: esm or cjs",
+              "enum": ["esm", "cjs"],
+              "default": "esm"
+            },
+            "target": {
+              "type": "string",
+              "description": "Target runtime: bun or node",
+              "enum": ["bun", "node"],
+              "default": "bun"
+            },
+            "external": {
+              "type": "array",
+              "description": "Dependencies to exclude from bundle",
+              "items": { "type": "string" }
+            }
+          }
+        }
+      }
     }
   },
 

@@ -297,6 +297,7 @@ export interface ReadHooksResult {
  * @param hooksDir - Path to the hooks directory
  * @returns Parsed hooks with source information
  */
+// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Handles multiple hook formats for backwards compatibility
 export async function readHooksWithPrecedence(hooksDir: string): Promise<ReadHooksResult> {
   // Try hooks.toml first
   const tomlConfig = await readHooksToml(hooksDir)
@@ -315,7 +316,7 @@ export async function readHooksWithPrecedence(hooksDir: string): Promise<ReadHoo
     if (await file.exists()) {
       const content = await file.json()
 
-      // Handle legacy hooks.json format
+      // Handle legacy hooks.json formats
       if (Array.isArray(content.hooks)) {
         // Simple array format: {hooks: [{event, script}, ...]}
         const hooks: CanonicalHookDefinition[] = content.hooks.map(
@@ -330,6 +331,44 @@ export async function readHooksWithPrecedence(hooksDir: string): Promise<ReadHoo
           hooks,
           source: 'json',
           sourcePath: hooksJsonPath,
+        }
+      }
+
+      // Claude's native format: {hooks: {PreToolUse: [{matcher, hooks: [{type, command}]}]}}
+      if (content.hooks && typeof content.hooks === 'object' && !Array.isArray(content.hooks)) {
+        const hooks: CanonicalHookDefinition[] = []
+        for (const [eventName, eventHooks] of Object.entries(content.hooks)) {
+          if (Array.isArray(eventHooks)) {
+            for (const hookDef of eventHooks as Array<{
+              matcher?: string
+              hooks?: Array<{ command?: string; type?: string }>
+            }>) {
+              // Extract command from nested hooks array
+              const commands = hookDef.hooks ?? []
+              for (const cmd of commands) {
+                if (cmd.command) {
+                  // Convert Claude command path to script path
+                  // ${CLAUDE_PLUGIN_ROOT}/hooks/script.sh -> hooks/script.sh
+                  const script = cmd.command.replace(/^\$\{CLAUDE_PLUGIN_ROOT\}\//, '')
+                  hooks.push({
+                    event: eventName
+                      .toLowerCase()
+                      .replace(/([a-z])([A-Z])/g, '$1_$2')
+                      .toLowerCase(),
+                    script,
+                    tools: hookDef.matcher ? [hookDef.matcher] : undefined,
+                  })
+                }
+              }
+            }
+          }
+        }
+        if (hooks.length > 0) {
+          return {
+            hooks,
+            source: 'json',
+            sourcePath: hooksJsonPath,
+          }
         }
       }
     }

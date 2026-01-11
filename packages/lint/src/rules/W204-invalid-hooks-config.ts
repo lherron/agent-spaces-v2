@@ -1,12 +1,16 @@
 /**
- * W204: Invalid or missing hooks.json.
+ * W204: Invalid or missing hooks configuration.
  *
- * WHY: When a hooks/ directory exists but hooks.json is missing or invalid,
- * the hooks won't be registered with Claude.
+ * WHY: When a hooks/ directory exists but neither hooks.toml nor hooks.json
+ * is valid, the hooks won't be registered with the harness.
+ *
+ * Supports both hooks.toml (harness-agnostic) and hooks.json (legacy).
+ * hooks.toml takes precedence over hooks.json when both exist.
  */
 
-import { readFile, stat } from 'node:fs/promises'
+import { stat } from 'node:fs/promises'
 import { join } from 'node:path'
+import { readHooksWithPrecedence } from '@agent-spaces/materializer'
 import type { LintContext, LintWarning } from '../types.js'
 import { WARNING_CODES } from '../types.js'
 
@@ -24,48 +28,49 @@ async function hooksDirectoryExists(pluginPath: string): Promise<boolean> {
 }
 
 /**
- * Check if hooks.json is valid.
- *
- * Accepts Claude's native hooks format where `hooks` is an object keyed by event type:
- * {
- *   "hooks": {
- *     "PostToolUse": [...],
- *     "SessionStart": [...]
- *   }
- * }
+ * Validate hooks configuration (supports both hooks.toml and hooks.json).
  */
-async function isHooksConfigValid(pluginPath: string): Promise<{ valid: boolean; error?: string }> {
-  const hooksJsonPath = join(pluginPath, 'hooks', 'hooks.json')
+async function validateHooksConfig(
+  pluginPath: string
+): Promise<{ valid: boolean; source?: 'toml' | 'json' | 'none'; error?: string }> {
+  const hooksDir = join(pluginPath, 'hooks')
 
   try {
-    const content = await readFile(hooksJsonPath, 'utf-8')
-    const config = JSON.parse(content)
+    const result = await readHooksWithPrecedence(hooksDir)
 
-    // Basic validation
-    if (!config || typeof config !== 'object') {
-      return { valid: false, error: 'hooks.json is not an object' }
-    }
-
-    // hooks must exist and be an object (keyed by event type)
-    if (!config.hooks || typeof config.hooks !== 'object') {
-      return { valid: false, error: "hooks.json missing 'hooks' object" }
-    }
-
-    // Each event key should have an array of hook configurations
-    for (const [eventName, eventHooks] of Object.entries(config.hooks)) {
-      if (!Array.isArray(eventHooks)) {
-        return { valid: false, error: `hooks.${eventName} must be an array` }
+    // Check if any hooks were found
+    if (result.hooks.length === 0 && result.source === 'none') {
+      return {
+        valid: false,
+        source: 'none',
+        error: 'Neither hooks.toml nor hooks.json found in hooks directory',
       }
     }
 
-    return { valid: true }
-  } catch (err) {
-    if ((err as NodeJS.ErrnoException).code === 'ENOENT') {
-      return { valid: false, error: 'hooks.json does not exist' }
+    // Validate hook definitions
+    for (const hook of result.hooks) {
+      if (!hook.event) {
+        return {
+          valid: false,
+          source: result.source as 'toml' | 'json',
+          error: 'Hook definition missing event field',
+        }
+      }
+      if (!hook.script) {
+        return {
+          valid: false,
+          source: result.source as 'toml' | 'json',
+          error: `Hook for event '${hook.event}' missing script field`,
+        }
+      }
     }
+
+    return { valid: true, source: result.source as 'toml' | 'json' }
+  } catch (err) {
     return {
       valid: false,
-      error: `Failed to parse hooks.json: ${err instanceof Error ? err.message : String(err)}`,
+      source: 'none',
+      error: `Failed to read hooks configuration: ${err instanceof Error ? err.message : String(err)}`,
     }
   }
 }
@@ -82,16 +87,19 @@ export async function checkHooksConfig(context: LintContext): Promise<LintWarnin
       continue
     }
 
-    const result = await isHooksConfigValid(space.pluginPath)
+    const result = await validateHooksConfig(space.pluginPath)
     if (!result.valid) {
+      const configFile =
+        result.source === 'toml' ? 'hooks.toml' : result.source === 'json' ? 'hooks.json' : 'hooks'
       warnings.push({
         code: WARNING_CODES.INVALID_HOOKS_CONFIG,
-        message: `hooks/ directory exists but hooks.json is invalid: ${result.error}`,
+        message: `hooks/ directory exists but hooks configuration is invalid: ${result.error}`,
         severity: 'error',
         spaceKey: space.key,
-        path: join(space.pluginPath, 'hooks', 'hooks.json'),
+        path: join(space.pluginPath, 'hooks', configFile),
         details: {
           error: result.error,
+          source: result.source,
         },
       })
     }

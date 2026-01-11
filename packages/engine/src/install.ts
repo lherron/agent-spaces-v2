@@ -9,17 +9,23 @@
  * - Materialize plugins to asp_modules directory
  */
 
-import { mkdir, rm, symlink } from 'node:fs/promises'
 import { join } from 'node:path'
 
 import {
   type CommitSha,
+  type ComposeTargetInput,
   DEFAULT_HARNESS,
   type HarnessId,
   LOCK_FILENAME,
   type LockFile,
+  type MaterializeSpaceInput,
+  type ResolvedSpaceArtifact,
+  type ResolvedSpaceManifest,
+  type Sha256Integrity,
   type SpaceId,
   type SpaceKey,
+  type SpaceRefString,
+  type SpaceSettings,
   atomicWriteJson,
   createEmptyLockFile,
   getAspModulesPath,
@@ -31,19 +37,15 @@ import {
 import { DEV_COMMIT_MARKER, DEV_INTEGRITY, mergeLockFiles } from '@agent-spaces/resolver'
 
 import {
-  type SettingsInput,
-  composeMcpFromSpaces,
-  composeSettingsFromSpaces,
-  materializeSpaces,
-} from '@agent-spaces/materializer'
-
-import {
   PathResolver,
   type SnapshotOptions,
+  cacheExists,
+  computePluginCacheKey,
   createSnapshot,
   ensureAspHome,
   getAspHome,
   snapshotExists,
+  writeCacheMetadata,
 } from '@agent-spaces/store'
 
 import { fetch as gitFetch } from '@agent-spaces/git'
@@ -178,7 +180,12 @@ export async function writeLockFile(lock: LockFile, projectPath: string): Promis
 
 /**
  * Materialize a single target to asp_modules directory.
+ *
+ * Uses the harness adapter's two-phase approach:
+ * 1. materializeSpace() - Creates plugin artifacts with harness-specific transforms
+ * 2. composeTarget() - Assembles artifacts into the target bundle
  */
+// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Materialization orchestrates multiple phases
 export async function materializeTarget(
   targetName: string,
   lock: LockFile,
@@ -196,102 +203,116 @@ export async function materializeTarget(
   // Returns: asp_modules/<target>/claude for ClaudeAdapter
   const aspModulesDir = getAspModulesPath(options.projectPath)
   const outputPath = adapter.getTargetOutputPath(aspModulesDir, targetName)
-  const pluginsPath = join(outputPath, 'plugins')
-
-  // Clean and create output directory
-  await rm(outputPath, { recursive: true, force: true }).catch(() => {})
-  await mkdir(outputPath, { recursive: true })
-  await mkdir(pluginsPath, { recursive: true })
 
   // Get spaces in load order for this target (from lock)
   const entries = getLoadOrderEntries(lock, targetName)
 
-  // Build materialization inputs from locked spaces
-  const inputs = entries.map((entry) => {
+  // Phase 1: Materialize each space using the harness adapter
+  // This handles harness-specific transforms like hooks.toml → hooks.json for Claude
+  const artifacts: ResolvedSpaceArtifact[] = []
+  const settingsInputs: SpaceSettings[] = []
+
+  for (const entry of entries) {
     const isDev =
       entry.commit === (DEV_COMMIT_MARKER as string) || entry.integrity === DEV_INTEGRITY
 
-    return {
-      manifest: {
-        schema: 1 as const,
-        id: entry.id,
-        plugin: entry.plugin,
-      },
-      // @dev entries: use filesystem path; others: use snapshots
-      snapshotPath: isDev
-        ? join(registryPath, 'spaces', entry.id)
-        : paths.snapshot(entry.integrity),
-      spaceKey: isDev
-        ? (`${entry.id}@dev` as SpaceKey)
-        : (`${entry.id}@${entry.commit.slice(0, 12)}` as SpaceKey),
-      integrity: entry.integrity,
-    }
-  })
+    // Compute cache key
+    const pluginName = entry.plugin?.name ?? entry.id
+    const pluginVersion = entry.plugin?.version ?? '0.0.0'
+    const cacheKey = computePluginCacheKey(
+      entry.integrity as Sha256Integrity,
+      pluginName,
+      pluginVersion
+    )
+    const cacheDir = paths.pluginCache(cacheKey)
 
-  // Materialize all spaces (to cache)
-  const materializeResults = await materializeSpaces(inputs, { paths })
+    // Build space key
+    const spaceKey = isDev
+      ? (`${entry.id}@dev` as SpaceKey)
+      : (`${entry.id}@${entry.commit.slice(0, 12)}` as SpaceKey)
 
-  // Get plugin directories (in cache) and create symlinks in asp_modules
-  // Use numeric prefixes to preserve load order (e.g., "000-base", "001-frontend")
-  const pluginDirs: string[] = []
-  for (let i = 0; i < materializeResults.length; i++) {
-    const result = materializeResults[i]
-    if (!result) continue
+    // Build snapshot path
+    const snapshotPath = isDev
+      ? join(registryPath, 'spaces', entry.id)
+      : paths.snapshot(entry.integrity)
 
-    const spaceId = result.spaceKey.split('@')[0] ?? result.spaceKey
-    const prefix = String(i).padStart(3, '0')
-    const linkPath = join(pluginsPath, `${prefix}-${spaceId}`)
+    // Check cache (skip for @dev refs since content can change)
+    const isCached = !isDev && (await cacheExists(cacheKey, { paths }))
 
-    // Remove existing link/dir if present
-    await rm(linkPath, { recursive: true, force: true }).catch(() => {})
-
-    // Create symlink to cache
-    await symlink(result.pluginPath, linkPath)
-
-    pluginDirs.push(linkPath)
-  }
-
-  // Compose MCP configuration if any spaces have MCP
-  let mcpConfigPath: string | undefined
-  const mcpOutputPath = join(outputPath, 'mcp.json')
-  const spacesDirs = materializeResults.map((r) => ({
-    spaceId: r.spaceKey.split('@')[0] ?? r.spaceKey,
-    dir: r.pluginPath,
-  }))
-  const mcpResult = await composeMcpFromSpaces(spacesDirs, mcpOutputPath)
-  if (Object.keys(mcpResult.config.mcpServers).length > 0) {
-    mcpConfigPath = mcpOutputPath
-  }
-
-  // Compose settings from all spaces
-  const settingsOutputPath = join(outputPath, 'settings.json')
-  const settingsInputs: SettingsInput[] = []
-
-  // Read settings from each snapshot's space.toml
-  for (const input of inputs) {
-    try {
-      const spaceTomlPath = join(input.snapshotPath, 'space.toml')
-      const manifest = await readSpaceToml(spaceTomlPath)
-      if (manifest.settings) {
-        settingsInputs.push({
-          spaceId: input.manifest.id,
-          settings: manifest.settings,
-        })
+    if (!isCached) {
+      // Build input for harness adapter
+      const input: MaterializeSpaceInput = {
+        spaceKey,
+        manifest: {
+          schema: 1,
+          id: entry.id,
+          plugin: {
+            ...entry.plugin,
+            name: pluginName,
+            version: pluginVersion,
+          },
+        } as ResolvedSpaceManifest,
+        snapshotPath,
+        integrity: entry.integrity,
       }
+
+      // Materialize using harness adapter (handles hooks.toml → hooks.json, etc.)
+      await adapter.materializeSpace(input, cacheDir, { force: true })
+
+      // Write cache metadata
+      await writeCacheMetadata(
+        cacheKey,
+        {
+          pluginName,
+          pluginVersion,
+          integrity: entry.integrity as Sha256Integrity,
+          cacheKey,
+          createdAt: new Date().toISOString(),
+          spaceKey,
+        },
+        { paths }
+      )
+    }
+
+    // Collect artifact
+    artifacts.push({
+      spaceKey,
+      spaceId: entry.id,
+      artifactPath: cacheDir,
+      pluginName,
+      pluginVersion,
+    })
+
+    // Read settings from snapshot's space.toml for composition
+    try {
+      const spaceTomlPath = join(snapshotPath, 'space.toml')
+      const manifest = await readSpaceToml(spaceTomlPath)
+      settingsInputs.push(manifest.settings ?? {})
     } catch {
-      // Space.toml may not exist or may not have settings - that's fine
+      settingsInputs.push({})
     }
   }
 
-  await composeSettingsFromSpaces(settingsInputs, settingsOutputPath)
-  const settingsPath = settingsOutputPath
+  // Phase 2: Compose target using harness adapter
+  // This handles assembling artifacts into the final target bundle
+  const target = lock.targets[targetName]
+  const composeInput: ComposeTargetInput = {
+    targetName,
+    compose: (target?.compose ?? []) as SpaceRefString[],
+    roots: (target?.roots ?? []) as SpaceKey[],
+    loadOrder: (target?.loadOrder ?? []) as SpaceKey[],
+    artifacts,
+    settingsInputs,
+  }
+
+  const { bundle } = await adapter.composeTarget(composeInput, outputPath, { clean: true })
 
   return {
     target: targetName,
-    outputPath,
-    pluginDirs,
-    mcpConfigPath,
-    settingsPath,
+    outputPath: bundle.rootDir,
+    pluginDirs: bundle.pluginDirs ?? [],
+    mcpConfigPath: bundle.mcpConfigPath,
+    settingsPath: bundle.settingsPath,
   }
 }
 
