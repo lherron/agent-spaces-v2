@@ -205,7 +205,6 @@ export const PI_ENFORCEMENT: Record<PermissionFacetKey, EnforcementLevel> = {
  * @returns Parsed canonical permissions
  * @throws Error if parsing fails
  */
-// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Parser handles multiple optional sections
 export function parsePermissionsToml(content: string): CanonicalPermissions {
   const parsed = TOML.parse(content) as unknown as Record<string, unknown>
 
@@ -516,7 +515,6 @@ export function toClaudeSettingsPermissions(
  * @param permissions - Canonical permissions from permissions.toml
  * @returns Pi permissions with enforcement levels
  */
-// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Translator handles multiple facets
 export function toPiPermissions(permissions: CanonicalPermissions): PiPermissions {
   const result: PiPermissions = {}
 

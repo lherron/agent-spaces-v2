@@ -541,7 +541,6 @@ export class PiAdapter implements HarnessAdapter {
    *
    * This bundles TypeScript extensions and copies skills/hooks.
    */
-  // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Space materialization handles multiple component types
   async materializeSpace(
     input: MaterializeSpaceInput,
     cacheDir: string,
@@ -689,7 +688,6 @@ export class PiAdapter implements HarnessAdapter {
    * - asp_modules/<target>/pi/skills/
    * - asp_modules/<target>/pi/asp-hooks.bridge.js
    */
-  // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Target composition handles multiple phases
   async composeTarget(
     input: ComposeTargetInput,
     outputDir: string,

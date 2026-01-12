@@ -376,7 +376,6 @@ async function readSettingsFromDir(dir: string): Promise<SpaceSettingsInfo | und
 /**
  * Build space info from lock entry.
  */
-// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Builds comprehensive space info
 async function buildSpaceInfo(
   key: SpaceKey,
   entry: LockSpaceEntry,
@@ -449,7 +448,6 @@ async function buildSpaceInfo(
 /**
  * Compose content from all spaces in load order.
  */
-// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Composes all content types from spaces
 function composeContent(spaces: SpaceInfo[]): ComposedContent {
   const composed: ComposedContent = {
     hooks: [],
@@ -640,7 +638,6 @@ export async function explain(options: ExplainOptions): Promise<ExplainResult> {
 /**
  * Format a single space for text output.
  */
-// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Formats all space properties for display
 function formatSpaceText(space: SpaceInfo, lines: string[]): void {
   const version = space.pluginVersion ? `@${space.pluginVersion}` : ''
   const storeStatus = space.inStore ? '' : ' [NOT IN STORE]'
@@ -681,7 +678,6 @@ function formatSpaceText(space: SpaceInfo, lines: string[]): void {
 /**
  * Format composed content summary.
  */
-// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Formats all composed content types
 function formatComposedText(composed: ComposedContent, lines: string[]): void {
   lines.push('  Composed content:')
 

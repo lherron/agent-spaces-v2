@@ -191,7 +191,6 @@ export async function writeLockFile(lock: LockFile, projectPath: string): Promis
  * 1. materializeSpace() - Creates plugin artifacts with harness-specific transforms
  * 2. composeTarget() - Assembles artifacts into the target bundle
  */
-// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Materialization orchestrates multiple phases
 export async function materializeTarget(
   targetName: string,
   lock: LockFile,
@@ -359,7 +358,6 @@ export async function materializeTarget(
  * 5. Writes lock file
  * 6. Materializes plugins to asp_modules directory
  */
-// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Install orchestrates multiple steps
 export async function install(options: InstallOptions): Promise<InstallResult> {
   // Ensure registry is available
   const registryPath = await ensureRegistry(options)

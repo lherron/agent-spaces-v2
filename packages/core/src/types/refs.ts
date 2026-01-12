@@ -46,6 +46,8 @@ export interface SpaceRef {
   selector: Selector
   /** True if selector was defaulted to dev (no explicit selector provided) */
   defaultedToDev?: boolean | undefined
+  /** Path for path-based refs (space:path:<path>@<selector>) */
+  path?: string | undefined
 }
 
 /** Raw space reference string format: `space:<id>@<selector>` */
@@ -63,6 +65,8 @@ const SHA256_INTEGRITY_PATTERN = /^sha256:([0-9a-f]{64}|dev)$/
 const SPACE_KEY_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*@([0-9a-f]{7,64}|dev)$/
 const SPACE_REF_WITH_SELECTOR_PATTERN = /^spaces?:([a-z0-9]+(?:-[a-z0-9]+)*)@(.+)$/
 const SPACE_REF_NO_SELECTOR_PATTERN = /^spaces?:([a-z0-9]+(?:-[a-z0-9]+)*)$/
+// Path-based refs: space:path:<path>@<selector>
+const SPACE_PATH_REF_PATTERN = /^spaces?:path:([^@]+)@(.+)$/
 const SEMVER_RANGE_PATTERN = /^[\^~]?\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/
 const SEMVER_EXACT_PATTERN = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/
 const GIT_PIN_PATTERN = /^git:([0-9a-f]{7,64})$/
@@ -121,7 +125,11 @@ export function parseSpaceKey(key: SpaceKey): { id: SpaceId; commit: CommitSha }
 }
 
 export function isSpaceRefString(value: string): value is SpaceRefString {
-  return SPACE_REF_WITH_SELECTOR_PATTERN.test(value) || SPACE_REF_NO_SELECTOR_PATTERN.test(value)
+  return (
+    SPACE_REF_WITH_SELECTOR_PATTERN.test(value) ||
+    SPACE_REF_NO_SELECTOR_PATTERN.test(value) ||
+    SPACE_PATH_REF_PATTERN.test(value)
+  )
 }
 
 export function parseSelector(selectorString: string): Selector {
@@ -158,6 +166,28 @@ export function parseSelector(selectorString: string): Selector {
 }
 
 export function parseSpaceRef(refString: string): SpaceRef {
+  // Try path-based ref first: space:path:<path>@<selector>
+  const pathMatch = SPACE_PATH_REF_PATTERN.exec(refString)
+  if (pathMatch?.[1] && pathMatch[2]) {
+    const refPath = pathMatch[1]
+    const selectorString = pathMatch[2]
+    const selector = parseSelector(selectorString)
+    // Derive a synthetic id from the path (last segment, normalized to kebab-case)
+    const pathSegments = refPath.split('/').filter(Boolean)
+    const lastSegment = pathSegments[pathSegments.length - 1] || 'path-ref'
+    // Convert to kebab-case (replace non-alphanumeric with dashes)
+    const syntheticId = lastSegment
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-|-$/g, '')
+    return {
+      id: (syntheticId || 'path-ref') as SpaceId,
+      selectorString,
+      selector,
+      path: refPath,
+    }
+  }
+
   // Try with selector first
   const matchWithSelector = SPACE_REF_WITH_SELECTOR_PATTERN.exec(refString)
   if (matchWithSelector?.[1] && matchWithSelector[2]) {

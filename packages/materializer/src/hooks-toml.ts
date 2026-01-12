@@ -338,7 +338,6 @@ export interface ReadHooksResult {
  * @param hooksDir - Path to the hooks directory
  * @returns Parsed hooks with source information
  */
-// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Handles multiple hook formats for backwards compatibility
 export async function readHooksWithPrecedence(hooksDir: string): Promise<ReadHooksResult> {
   // Try hooks.toml first
   const tomlConfig = await readHooksToml(hooksDir)

@@ -1,27 +1,33 @@
 {
   "name": "@agent-spaces/engine",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description": "High-level orchestration engine for Agent Spaces v2",
   "type": "module",
-  "main": "src/index.ts",
-  "types": "src/index.ts",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "exports": {
-    ".": "./src/index.ts"
+    ".": {
+      "bun": "./src/index.ts",
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
   },
+  "files": ["dist"],
   "scripts": {
+    "build": "tsc",
     "typecheck": "tsc --noEmit",
     "test": "bun test",
     "lint": "biome check .",
     "lint:fix": "biome check --write ."
   },
   "dependencies": {
-    "@agent-spaces/core": "*",
-    "@agent-spaces/git": "*",
-    "@agent-spaces/claude": "*",
-    "@agent-spaces/resolver": "*",
-    "@agent-spaces/store": "*",
-    "@agent-spaces/materializer": "*",
-    "@agent-spaces/lint": "*"
+    "@agent-spaces/core": "workspace:*",
+    "@agent-spaces/git": "workspace:*",
+    "@agent-spaces/claude": "workspace:*",
+    "@agent-spaces/resolver": "workspace:*",
+    "@agent-spaces/store": "workspace:*",
+    "@agent-spaces/materializer": "workspace:*",
+    "@agent-spaces/lint": "workspace:*"
   },
   "devDependencies": {
     "@types/bun": "latest",

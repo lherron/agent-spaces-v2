@@ -92,12 +92,19 @@ export async function readSpaceManifestOrNull(
 /**
  * Read a space manifest from the filesystem (working directory).
  * Used for @dev refs that point to uncommitted local changes.
+ *
+ * @param spaceIdOrPath - Space ID (for registry-based refs) or absolute path to space dir (for path refs)
+ * @param options - ManifestReadOptions with cwd
  */
 export async function readSpaceManifestFromFilesystem(
-  spaceId: SpaceId,
+  spaceIdOrPath: SpaceId | string,
   options: ManifestReadOptions
 ): Promise<SpaceManifest> {
-  const path = join(options.cwd, 'spaces', spaceId, 'space.toml')
+  // Determine if this is a path ref (absolute/relative path) or a space ID
+  const isPathRef = spaceIdOrPath.includes('/') || spaceIdOrPath.includes('\\')
+  const path = isPathRef
+    ? join(spaceIdOrPath, 'space.toml') // Path ref: use path directly
+    : join(options.cwd, 'spaces', spaceIdOrPath, 'space.toml') // ID ref: use registry structure
 
   let content: string
   try {

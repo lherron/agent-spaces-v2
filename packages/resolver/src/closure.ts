@@ -142,8 +142,10 @@ export async function computeClosure(
     visitPath.push(key)
 
     // Read the manifest (from filesystem for @dev, from git for others)
+    // For path refs, use the path directly; for id refs, use the space ID
+    const manifestLocation = ref.path ?? ref.id
     const manifest = isDev
-      ? await readSpaceManifestFromFilesystem(ref.id, options)
+      ? await readSpaceManifestFromFilesystem(manifestLocation, options)
       : await readSpaceManifest(ref.id, resolved.commit, options)
 
     // Get dependencies
@@ -167,11 +169,13 @@ export async function computeClosure(
     }
 
     // All deps visited, now add this space (postorder)
+    // For path refs, use the path from the ref; for id refs, construct from id
+    const spacePath = ref.path ?? `spaces/${ref.id}`
     const resolvedSpace: ResolvedSpace = {
       key,
       id: ref.id,
       commit: resolved.commit,
-      path: `spaces/${ref.id}`,
+      path: spacePath,
       manifest,
       resolvedFrom: resolved,
       deps: depKeys,

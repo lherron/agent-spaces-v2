@@ -6,6 +6,7 @@
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
+      "bun": "./src/index.ts",
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
     },
@@ -14,6 +15,7 @@
       "import": "./src/schemas/*"
     }
   },
+  "files": ["dist", "src/schemas"],
   "scripts": {
     "build": "tsc",
     "typecheck": "tsc --noEmit",

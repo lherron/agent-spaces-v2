@@ -205,7 +205,6 @@ export class ClaudeAdapter implements HarnessAdapter {
    * - asp_modules/<target>/mcp.json
    * - asp_modules/<target>/settings.json
    */
-  // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Target composition handles multiple phases
   async composeTarget(
     input: ComposeTargetInput,
     outputDir: string,

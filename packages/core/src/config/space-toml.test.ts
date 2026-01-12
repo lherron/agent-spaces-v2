@@ -51,7 +51,6 @@ function createFullManifest(): SpaceManifest {
 }
 
 /** Convert a SpaceManifest to TOML string for testing */
-// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Test utility for TOML serialization
 function toToml(manifest: SpaceManifest): string {
   const lines: string[] = []
   lines.push(`schema = ${manifest.schema}`)

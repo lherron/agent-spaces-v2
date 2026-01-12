@@ -650,7 +650,6 @@ export interface GlobalRunOptions {
  *
  * For @dev selector, runs directly from the filesystem (working directory).
  */
-// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Global space run orchestrates multiple steps
 export async function runGlobalSpace(
   spaceRefString: SpaceRefString,
   options: GlobalRunOptions = {}
@@ -899,13 +898,14 @@ export async function runLocalSpace(
     // Build Claude invocation options
     // Use settings from options if provided, otherwise use composed settings
     // ASP_PLUGIN_ROOT points to the first plugin dir (for single-space @dev runs)
+    // Default cwd to spacePath so local dev mode runs in the space directory
     const yoloArgs = options.yolo ? ['--dangerously-skip-permissions'] : []
     const invokeOptions: ClaudeInvokeOptions = {
       pluginDirs,
       mcpConfig: mcpConfigPath,
       settingSources,
       settings: options.settings ?? settingsPath,
-      cwd: options.cwd ?? process.cwd(),
+      cwd: options.cwd ?? spacePath,
       args: [...yoloArgs, ...(options.extraArgs ?? [])],
       env: {
         ...options.env,

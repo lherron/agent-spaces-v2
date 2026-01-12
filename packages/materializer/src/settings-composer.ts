@@ -47,7 +47,6 @@ export interface SettingsInput {
  * - env: later values override earlier ones for the same key
  * - model: last defined model wins
  */
-// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Settings composition handles multiple fields
 export function composeSettings(inputs: SettingsInput[]): ComposedSettings {
   const composed: ComposedSettings = {}
 

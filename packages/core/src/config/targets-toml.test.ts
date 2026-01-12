@@ -62,7 +62,6 @@ function createFullManifest(): ProjectManifest {
 }
 
 /** Convert a ProjectManifest to TOML string for testing */
-// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Test utility for TOML serialization
 function toToml(manifest: ProjectManifest): string {
   const lines: string[] = []
   lines.push(`schema = ${manifest.schema}`)

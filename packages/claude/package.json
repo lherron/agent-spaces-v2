@@ -2,24 +2,23 @@
   "name": "@agent-spaces/claude",
   "version": "0.1.0",
   "type": "module",
-  "exports": {
-    ".": {
-      "import": "./dist/index.js",
-      "types": "./dist/index.d.ts"
-    }
-  },
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
-  "files": [
-    "dist"
-  ],
+  "exports": {
+    ".": {
+      "bun": "./src/index.ts",
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": ["dist"],
   "scripts": {
     "build": "tsc",
     "test": "bun test",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@agent-spaces/core": "*"
+    "@agent-spaces/core": "workspace:*"
   },
   "devDependencies": {
     "@types/bun": "latest",

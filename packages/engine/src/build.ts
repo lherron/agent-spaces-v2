@@ -86,7 +86,6 @@ export interface BuildResult {
  * 4. Composes MCP configuration
  * 5. Runs lint checks
  */
-// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Build orchestrates multiple steps
 export async function build(targetName: string, options: BuildOptions): Promise<BuildResult> {
   const aspHome = options.aspHome ?? getAspHome()
   const paths = new PathResolver({ aspHome })
