@@ -89,8 +89,16 @@ export const HOOKS_JSON_FILENAME = 'hooks.json'
 export const ABSTRACT_TO_CLAUDE_EVENTS: Record<string, string> = {
   pre_tool_use: 'PreToolUse',
   post_tool_use: 'PostToolUse',
-  session_end: 'Stop',
-  // Claude doesn't have session_start equivalent via hooks
+  post_tool_use_failure: 'PostToolUseFailure',
+  permission_request: 'PermissionRequest',
+  notification: 'Notification',
+  user_prompt_submit: 'UserPromptSubmit',
+  stop: 'Stop',
+  subagent_start: 'SubagentStart',
+  subagent_stop: 'SubagentStop',
+  pre_compact: 'PreCompact',
+  session_start: 'SessionStart',
+  session_end: 'SessionEnd',
 }
 
 /**

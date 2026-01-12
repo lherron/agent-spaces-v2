@@ -102,12 +102,29 @@ describe('translateToClaudeEvent', () => {
     expect(translateToClaudeEvent('post_tool_use')).toBe('PostToolUse')
   })
 
-  it('translates session_end to Stop', () => {
-    expect(translateToClaudeEvent('session_end')).toBe('Stop')
+  it('translates session_end to SessionEnd', () => {
+    expect(translateToClaudeEvent('session_end')).toBe('SessionEnd')
+  })
+
+  it('translates stop to Stop', () => {
+    expect(translateToClaudeEvent('stop')).toBe('Stop')
+  })
+
+  it('translates session_start to SessionStart', () => {
+    expect(translateToClaudeEvent('session_start')).toBe('SessionStart')
+  })
+
+  it('translates all new hook events', () => {
+    expect(translateToClaudeEvent('post_tool_use_failure')).toBe('PostToolUseFailure')
+    expect(translateToClaudeEvent('permission_request')).toBe('PermissionRequest')
+    expect(translateToClaudeEvent('notification')).toBe('Notification')
+    expect(translateToClaudeEvent('user_prompt_submit')).toBe('UserPromptSubmit')
+    expect(translateToClaudeEvent('subagent_start')).toBe('SubagentStart')
+    expect(translateToClaudeEvent('subagent_stop')).toBe('SubagentStop')
+    expect(translateToClaudeEvent('pre_compact')).toBe('PreCompact')
   })
 
   it('returns null for unknown events', () => {
-    expect(translateToClaudeEvent('session_start')).toBeNull()
     expect(translateToClaudeEvent('unknown_event')).toBeNull()
   })
 })

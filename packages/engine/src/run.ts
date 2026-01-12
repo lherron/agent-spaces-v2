@@ -197,6 +197,16 @@ interface ClaudeExecutionResult {
 }
 
 /**
+ * Format environment variables as shell prefix (e.g., "VAR=value VAR2=value2 ").
+ */
+function formatEnvPrefix(env: Record<string, string> | undefined): string {
+  if (!env || Object.keys(env).length === 0) return ''
+  return `${Object.entries(env)
+    .map(([key, value]) => `${key}=${shellQuote(value)}`)
+    .join(' ')} `
+}
+
+/**
  * Execute Claude in either interactive or non-interactive mode.
  */
 async function executeClaude(
@@ -208,12 +218,19 @@ async function executeClaude(
   }
 ): Promise<ClaudeExecutionResult> {
   // Always compute the command for display/logging
-  const promptArgs = options.prompt ? ['--print', options.prompt] : []
+  // Add -p flag for non-interactive mode (with prompt if provided, otherwise just the flag for dry-run)
+  const promptArgs = options.prompt
+    ? ['-p', options.prompt]
+    : options.interactive === false
+      ? ['-p']
+      : []
   const fullOptions = {
     ...invokeOptions,
     args: [...(invokeOptions.args ?? []), ...promptArgs],
   }
-  const command = await getClaudeCommand(fullOptions)
+  const baseCommand = await getClaudeCommand(fullOptions)
+  // Prepend env vars in shell syntax for copy-paste compatibility
+  const command = formatEnvPrefix(invokeOptions.env) + baseCommand
 
   // In dry-run mode, just return the command without executing
   if (options.dryRun) {
@@ -526,7 +543,10 @@ export async function run(targetName: string, options: RunOptions): Promise<RunR
     settings: options.settings ?? settingsPath,
     cwd: options.cwd ?? options.projectPath,
     args: [...(claudeOptions.args ?? []), ...yoloArgs, ...(options.extraArgs ?? [])],
-    env: options.env,
+    env: {
+      ...options.env,
+      ASP_PLUGIN_ROOT: harnessOutputPath,
+    },
   }
   debugLog('run options', {
     prompt: options.prompt,
@@ -750,6 +770,7 @@ export async function runGlobalSpace(
 
     // Build Claude invocation options
     // Use settings from options if provided, otherwise use composed settings
+    // ASP_PLUGIN_ROOT points to the first plugin dir (for single-space @dev runs)
     const yoloArgs = options.yolo ? ['--dangerously-skip-permissions'] : []
     const invokeOptions: ClaudeInvokeOptions = {
       pluginDirs,
@@ -758,7 +779,10 @@ export async function runGlobalSpace(
       settings: options.settings ?? settingsPath,
       cwd: options.cwd ?? process.cwd(),
       args: [...yoloArgs, ...(options.extraArgs ?? [])],
-      env: options.env,
+      env: {
+        ...options.env,
+        ASP_PLUGIN_ROOT: pluginDirs[0] ?? tempDir,
+      },
     }
 
     // Execute Claude
@@ -819,12 +843,13 @@ export async function runLocalSpace(
     const spaceKey = `${manifest.id}@local` as SpaceKey
 
     // Build input for materialization
+    // Use 'sha256:dev' to signal the materializer to skip caching
     const inputs = [
       {
         manifest,
         snapshotPath: spacePath, // Use local path directly
         spaceKey,
-        integrity: 'sha256:local' as `sha256:${string}`,
+        integrity: 'sha256:dev' as `sha256:${string}`,
       },
     ]
 
@@ -873,6 +898,7 @@ export async function runLocalSpace(
 
     // Build Claude invocation options
     // Use settings from options if provided, otherwise use composed settings
+    // ASP_PLUGIN_ROOT points to the first plugin dir (for single-space @dev runs)
     const yoloArgs = options.yolo ? ['--dangerously-skip-permissions'] : []
     const invokeOptions: ClaudeInvokeOptions = {
       pluginDirs,
@@ -881,7 +907,10 @@ export async function runLocalSpace(
       settings: options.settings ?? settingsPath,
       cwd: options.cwd ?? process.cwd(),
       args: [...yoloArgs, ...(options.extraArgs ?? [])],
-      env: options.env,
+      env: {
+        ...options.env,
+        ASP_PLUGIN_ROOT: pluginDirs[0] ?? tempDir,
+      },
     }
 
     // Execute Claude
