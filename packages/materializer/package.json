@@ -1,6 +1,7 @@
 {
   "name": "@agent-spaces/materializer",
   "version": "0.1.0",
+  "private": true,
   "description": "Plugin directory generation for Agent Spaces v2",
   "type": "module",
   "main": "./dist/index.js",

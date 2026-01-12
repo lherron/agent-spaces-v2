@@ -1,6 +1,7 @@
 {
   "name": "@agent-spaces/lint",
   "version": "0.1.0",
+  "private": true,
   "description": "Warning detection rules for Agent Spaces v2",
   "type": "module",
   "main": "./dist/index.js",

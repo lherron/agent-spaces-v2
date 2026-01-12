@@ -1,6 +1,7 @@
 {
   "name": "@agent-spaces/engine",
   "version": "0.1.0",
+  "private": true,
   "description": "High-level orchestration engine for Agent Spaces v2",
   "type": "module",
   "main": "./dist/index.js",
