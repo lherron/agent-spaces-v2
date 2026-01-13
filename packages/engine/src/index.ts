@@ -30,9 +30,20 @@ export {
   ensureRegistry,
   populateStore,
   writeLockFile,
+  materializeTarget,
   type InstallOptions,
   type InstallResult,
+  type TargetMaterializationResult,
 } from './install.js'
+
+// Low-level materialization from refs
+export {
+  materializeFromRefs,
+  discoverSkills,
+  type MaterializeFromRefsOptions,
+  type MaterializeFromRefsResult,
+  type SkillMetadata,
+} from './materialize-refs.js'
 
 // Building
 export {
