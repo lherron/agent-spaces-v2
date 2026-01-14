@@ -1079,6 +1079,11 @@ export class PiAdapter implements HarnessAdapter {
     // Default provider for Pi
     args.push('--provider', 'openai-codex')
 
+    // Add --print for non-interactive mode
+    if (options.interactive === false) {
+      args.push('--print')
+    }
+
     // Add extra args
     if (options.extraArgs) {
       args.push(...options.extraArgs)
