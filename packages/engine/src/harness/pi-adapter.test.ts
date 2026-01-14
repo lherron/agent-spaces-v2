@@ -527,17 +527,22 @@ export function tool() { return 'built with options'; }
     })
 
     test('generates hook bridge extension when hooks present', async () => {
-      // Create hooks directory with hooks.toml
-      await mkdir(join(artifact1Dir, 'hooks'), { recursive: true })
+      // Create hooks-scripts directory with hooks.toml (Pi uses hooks-scripts/ to avoid conflict)
+      await mkdir(join(artifact1Dir, 'hooks-scripts'), { recursive: true })
       await writeFile(
-        join(artifact1Dir, 'hooks/hooks.toml'),
+        join(artifact1Dir, 'hooks-scripts/hooks.toml'),
         `
 [[hook]]
 event = "pre_tool_use"
-script = "hooks/validate.sh"
+script = "scripts/validate.sh"
 `
       )
-      await writeFile(join(artifact1Dir, 'hooks/validate.sh'), '#!/bin/bash\necho "validating"')
+      // Create script in scripts subdirectory
+      await mkdir(join(artifact1Dir, 'hooks-scripts/scripts'), { recursive: true })
+      await writeFile(
+        join(artifact1Dir, 'hooks-scripts/scripts/validate.sh'),
+        '#!/bin/bash\necho "validating"'
+      )
 
       const input = {
         targetName: 'test-target',
@@ -566,23 +571,176 @@ script = "hooks/validate.sh"
 
       // Verify content contains hook registration
       const bridgeContent = await Bun.file(join(outputDir, 'asp-hooks.bridge.js')).text()
-      expect(bridgeContent).toContain('registerHook')
+      expect(bridgeContent).toContain('pi.on(')
       expect(bridgeContent).toContain('tool_call') // pre_tool_use maps to tool_call in Pi
     })
 
-    test('generates W301 warning for blocking hooks', async () => {
-      // Create hooks with blocking=true
-      await mkdir(join(artifact1Dir, 'hooks'), { recursive: true })
+    test('generates correct script path for Claude native hooks.json with nested scripts', async () => {
+      // Create hooks-scripts directory with Claude's native hooks.json format
+      // This simulates the structure after materialization from a hooks.json like:
+      // ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/agent_motd.sh
+      await mkdir(join(artifact1Dir, 'hooks-scripts/scripts'), { recursive: true })
       await writeFile(
-        join(artifact1Dir, 'hooks/hooks.toml'),
+        join(artifact1Dir, 'hooks-scripts/hooks.json'),
+        JSON.stringify({
+          hooks: {
+            SessionStart: [
+              {
+                matcher: 'startup',
+                hooks: [
+                  {
+                    type: 'command',
+                    command: '${CLAUDE_PLUGIN_ROOT}/hooks/scripts/agent_motd.sh',
+                  },
+                ],
+              },
+            ],
+          },
+        })
+      )
+      await writeFile(
+        join(artifact1Dir, 'hooks-scripts/scripts/agent_motd.sh'),
+        '#!/bin/bash\necho "motd"'
+      )
+
+      const input = {
+        targetName: 'test-target',
+        compose: ['space1' as any],
+        roots: ['space1@abc' as SpaceKey],
+        loadOrder: ['space1@abc' as SpaceKey],
+        artifacts: [
+          {
+            spaceKey: 'space1@abc' as SpaceKey,
+            spaceId: 'space1',
+            artifactPath: artifact1Dir,
+            pluginName: 'plugin1',
+          },
+        ],
+        settingsInputs: [],
+      }
+
+      const result = await adapter.composeTarget(input, outputDir, {})
+
+      // Hook bridge should be generated
+      expect(result.bundle.pi?.hookBridgePath).toBe(join(outputDir, 'asp-hooks.bridge.js'))
+
+      // Verify hook bridge file exists and contains correct path
+      const bridgeContent = await Bun.file(join(outputDir, 'asp-hooks.bridge.js')).text()
+
+      // The generated script path should include the 'scripts' subdirectory
+      // Expected: /path/to/hooks-scripts/scripts/agent_motd.sh
+      // NOT: /path/to/hooks-scripts/agent_motd.sh
+      expect(bridgeContent).toContain('hooks-scripts/scripts/agent_motd.sh')
+      expect(bridgeContent).not.toMatch(/hooks-scripts\/agent_motd\.sh[^/]/)
+    })
+
+    test('resolves missing scripts/ prefix for nested hook scripts', async () => {
+      await mkdir(join(artifact1Dir, 'hooks-scripts/scripts'), { recursive: true })
+      await writeFile(
+        join(artifact1Dir, 'hooks-scripts/hooks.json'),
+        JSON.stringify({
+          hooks: {
+            SessionStart: [
+              {
+                matcher: 'startup',
+                hooks: [
+                  {
+                    type: 'command',
+                    command: '${CLAUDE_PLUGIN_ROOT}/hooks/agent_motd.sh',
+                  },
+                ],
+              },
+            ],
+          },
+        })
+      )
+      await writeFile(
+        join(artifact1Dir, 'hooks-scripts/scripts/agent_motd.sh'),
+        '#!/bin/bash\necho "motd"'
+      )
+
+      const input = {
+        targetName: 'test-target',
+        compose: ['space1' as any],
+        roots: ['space1@abc' as SpaceKey],
+        loadOrder: ['space1@abc' as SpaceKey],
+        artifacts: [
+          {
+            spaceKey: 'space1@abc' as SpaceKey,
+            spaceId: 'space1',
+            artifactPath: artifact1Dir,
+            pluginName: 'plugin1',
+          },
+        ],
+        settingsInputs: [],
+      }
+
+      await adapter.composeTarget(input, outputDir, {})
+
+      const bridgeContent = await Bun.file(join(outputDir, 'asp-hooks.bridge.js')).text()
+      expect(bridgeContent).toContain('hooks-scripts/scripts/agent_motd.sh')
+    })
+
+    test('passes through raw command hooks without rewriting paths', async () => {
+      await mkdir(join(artifact1Dir, 'hooks-scripts'), { recursive: true })
+      await writeFile(
+        join(artifact1Dir, 'hooks-scripts/hooks.json'),
+        JSON.stringify({
+          hooks: {
+            SessionStart: [
+              {
+                matcher: 'startup',
+                hooks: [
+                  {
+                    type: 'command',
+                    command: 'asp --help',
+                  },
+                ],
+              },
+            ],
+          },
+        })
+      )
+
+      const input = {
+        targetName: 'test-target',
+        compose: ['space1' as any],
+        roots: ['space1@abc' as SpaceKey],
+        loadOrder: ['space1@abc' as SpaceKey],
+        artifacts: [
+          {
+            spaceKey: 'space1@abc' as SpaceKey,
+            spaceId: 'space1',
+            artifactPath: artifact1Dir,
+            pluginName: 'plugin1',
+          },
+        ],
+        settingsInputs: [],
+      }
+
+      await adapter.composeTarget(input, outputDir, {})
+
+      const bridgeContent = await Bun.file(join(outputDir, 'asp-hooks.bridge.js')).text()
+      expect(bridgeContent).toContain("spawn('asp --help'")
+    })
+
+    test('generates W301 warning for blocking hooks', async () => {
+      // Create hooks-scripts with blocking=true (Pi uses hooks-scripts/ to avoid conflict)
+      await mkdir(join(artifact1Dir, 'hooks-scripts'), { recursive: true })
+      await writeFile(
+        join(artifact1Dir, 'hooks-scripts/hooks.toml'),
         `
 [[hook]]
 event = "pre_tool_use"
-script = "hooks/validate.sh"
+script = "scripts/validate.sh"
 blocking = true
 `
       )
-      await writeFile(join(artifact1Dir, 'hooks/validate.sh'), '#!/bin/bash\necho "blocking"')
+      await mkdir(join(artifact1Dir, 'hooks-scripts/scripts'), { recursive: true })
+      await writeFile(
+        join(artifact1Dir, 'hooks-scripts/scripts/validate.sh'),
+        '#!/bin/bash\necho "blocking"'
+      )
 
       const input = {
         targetName: 'test-target',
@@ -726,47 +884,63 @@ paths = ["/tmp"]
       await rm(tmpDir, { recursive: true, force: true })
     })
 
-    test('builds args with hook bridge extension', () => {
+    test('builds args with hook bridge extension', async () => {
+      const tmpDir = join(tmpdir(), `pi-args-hook-${Date.now()}`)
+      const extensionsDir = join(tmpDir, 'extensions')
+      await mkdir(extensionsDir, { recursive: true })
+
       const bundle = {
         harnessId: 'pi' as const,
         targetName: 'test',
-        rootDir: '/test',
+        rootDir: tmpDir,
         pi: {
-          extensionsDir: '/test/extensions',
-          hookBridgePath: '/test/asp-hooks.bridge.js',
+          extensionsDir,
+          hookBridgePath: join(tmpDir, 'asp-hooks.bridge.js'),
         },
       }
 
       const args = adapter.buildRunArgs(bundle, {})
 
       expect(args).toContain('--extension')
-      expect(args).toContain('/test/asp-hooks.bridge.js')
+      expect(args).toContain(join(tmpDir, 'asp-hooks.bridge.js'))
+
+      await rm(tmpDir, { recursive: true, force: true })
     })
 
-    test('builds args with skills directory', () => {
+    test('always adds --no-skills to disable default skill loading', async () => {
+      const tmpDir = join(tmpdir(), `pi-args-skills-${Date.now()}`)
+      const extensionsDir = join(tmpDir, 'extensions')
+      await mkdir(extensionsDir, { recursive: true })
+
       const bundle = {
         harnessId: 'pi' as const,
         targetName: 'test',
-        rootDir: '/test',
+        rootDir: tmpDir,
         pi: {
-          extensionsDir: '/test/extensions',
-          skillsDir: '/test/skills',
+          extensionsDir,
+          skillsDir: join(tmpDir, 'skills'),
         },
       }
 
       const args = adapter.buildRunArgs(bundle, {})
 
-      expect(args).toContain('--skills')
-      expect(args).toContain('/test/skills')
+      // Should always add --no-skills to prevent loading from .claude, .codex, etc.
+      expect(args).toContain('--no-skills')
+
+      await rm(tmpDir, { recursive: true, force: true })
     })
 
-    test('translates model names', () => {
+    test('translates model names', async () => {
+      const tmpDir = join(tmpdir(), `pi-args-model-${Date.now()}`)
+      const extensionsDir = join(tmpDir, 'extensions')
+      await mkdir(extensionsDir, { recursive: true })
+
       const bundle = {
         harnessId: 'pi' as const,
         targetName: 'test',
-        rootDir: '/test',
+        rootDir: tmpDir,
         pi: {
-          extensionsDir: '/test/extensions',
+          extensionsDir,
         },
       }
 
@@ -784,30 +958,42 @@ paths = ["/tmp"]
       const argsHaiku = adapter.buildRunArgs(bundle, { model: 'haiku' })
       expect(argsHaiku).toContain('--model')
       expect(argsHaiku).toContain('claude-haiku')
+
+      await rm(tmpDir, { recursive: true, force: true })
     })
 
-    test('passes through unknown model names', () => {
+    test('passes through unknown model names', async () => {
+      const tmpDir = join(tmpdir(), `pi-args-unknown-${Date.now()}`)
+      const extensionsDir = join(tmpDir, 'extensions')
+      await mkdir(extensionsDir, { recursive: true })
+
       const bundle = {
         harnessId: 'pi' as const,
         targetName: 'test',
-        rootDir: '/test',
+        rootDir: tmpDir,
         pi: {
-          extensionsDir: '/test/extensions',
+          extensionsDir,
         },
       }
 
       const args = adapter.buildRunArgs(bundle, { model: 'gpt-4' })
       expect(args).toContain('--model')
       expect(args).toContain('gpt-4')
+
+      await rm(tmpDir, { recursive: true, force: true })
     })
 
-    test('includes extra args', () => {
+    test('includes extra args', async () => {
+      const tmpDir = join(tmpdir(), `pi-args-extra-${Date.now()}`)
+      const extensionsDir = join(tmpDir, 'extensions')
+      await mkdir(extensionsDir, { recursive: true })
+
       const bundle = {
         harnessId: 'pi' as const,
         targetName: 'test',
-        rootDir: '/test',
+        rootDir: tmpDir,
         pi: {
-          extensionsDir: '/test/extensions',
+          extensionsDir,
         },
       }
 
@@ -815,33 +1001,62 @@ paths = ["/tmp"]
 
       expect(args).toContain('--verbose')
       expect(args).toContain('--debug')
+
+      await rm(tmpDir, { recursive: true, force: true })
     })
 
-    test('includes project path', () => {
+    test('does not include project path (Pi uses cwd)', async () => {
+      const tmpDir = join(tmpdir(), `pi-args-path-${Date.now()}`)
+      const extensionsDir = join(tmpDir, 'extensions')
+      await mkdir(extensionsDir, { recursive: true })
+
       const bundle = {
         harnessId: 'pi' as const,
         targetName: 'test',
-        rootDir: '/test',
+        rootDir: tmpDir,
         pi: {
-          extensionsDir: '/test/extensions',
+          extensionsDir,
         },
       }
 
       const args = adapter.buildRunArgs(bundle, { projectPath: '/my/project' })
 
-      expect(args[args.length - 1]).toBe('/my/project')
+      // Pi uses cwd, not a positional path argument
+      expect(args).not.toContain('/my/project')
+
+      await rm(tmpDir, { recursive: true, force: true })
     })
 
-    test('returns empty array when no pi bundle', () => {
+    test('throws when no pi bundle', () => {
       const bundle = {
         harnessId: 'pi' as const,
         targetName: 'test',
         rootDir: '/test',
       }
 
+      expect(() => adapter.buildRunArgs(bundle, {})).toThrow('Pi bundle is missing')
+    })
+
+    test('adds --no-extensions when no extensions found', async () => {
+      const tmpDir = join(tmpdir(), `pi-args-no-ext-${Date.now()}`)
+      const extensionsDir = join(tmpDir, 'extensions')
+      await mkdir(extensionsDir, { recursive: true })
+      // Empty extensions directory - no .js files
+
+      const bundle = {
+        harnessId: 'pi' as const,
+        targetName: 'test',
+        rootDir: tmpDir,
+        pi: {
+          extensionsDir,
+        },
+      }
+
       const args = adapter.buildRunArgs(bundle, {})
 
-      expect(args).toEqual([])
+      expect(args).toContain('--no-extensions')
+
+      await rm(tmpDir, { recursive: true, force: true })
     })
   })
 
@@ -1067,8 +1282,8 @@ describe('Hook bridge generation', () => {
 
       const code = generateHookBridgeCode(hooks, ['space1'])
 
-      expect(code).toContain('export default function')
-      expect(code).toContain('registerHook')
+      expect(code).toContain('module.exports = function')
+      expect(code).toContain('pi.on(')
     })
 
     test('translates pre_tool_use to tool_call', () => {
@@ -1198,7 +1413,9 @@ describe('Hook bridge generation', () => {
 
       const code = generateHookBridgeCode(hooks, ['space1'])
 
-      expect(code).toContain('cannot block')
+      // Blocking hooks still generate code, logging handles exit codes
+      expect(code).toContain('/path/to/script.sh')
+      expect(code).toContain('log(')
     })
 
     test('handles multiple hooks', () => {
@@ -1222,8 +1439,8 @@ describe('Hook bridge generation', () => {
       expect(code).toContain('pre.sh')
       expect(code).toContain('post.sh')
       expect(code).toContain('start.sh')
-      // Count registerHook calls
-      const hookCount = (code.match(/registerHook/g) || []).length
+      // Count pi.on() calls
+      const hookCount = (code.match(/pi\.on\(/g) || []).length
       expect(hookCount).toBe(3)
     })
   })

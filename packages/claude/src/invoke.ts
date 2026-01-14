@@ -40,6 +40,8 @@ export interface ClaudeInvokeOptions {
   settingSources?: string | undefined
   /** Path to settings JSON file or JSON string (--settings flag) */
   settings?: string | undefined
+  /** Debug mode (--debug hooks) */
+  debug?: boolean | undefined
   /** Additional arguments to pass through */
   args?: string[] | undefined
   /** Working directory for Claude */
@@ -104,6 +106,11 @@ export function buildClaudeArgs(options: ClaudeInvokeOptions): string[] {
   // Add settings file or JSON
   if (options.settings) {
     args.push('--settings', options.settings)
+  }
+
+  // Add debug mode for hooks
+  if (options.debug) {
+    args.push('--debug', 'hooks')
   }
 
   // Add pass-through arguments

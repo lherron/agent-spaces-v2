@@ -135,6 +135,8 @@ export interface RunOptions extends ResolveOptions {
   refresh?: boolean | undefined
   /** YOLO mode - skip all permission prompts (--dangerously-skip-permissions) */
   yolo?: boolean | undefined
+  /** Debug mode - enable hook debugging (--debug hooks) */
+  debug?: boolean | undefined
 }
 
 /**
@@ -463,8 +465,15 @@ export async function run(targetName: string, options: RunOptions): Promise<RunR
       settingSources: options.settingSources,
     })
 
+    // Build env vars for Pi harness
+    const piEnv: Record<string, string> = {
+      ...options.env,
+      PI_CODING_AGENT_DIR: harnessOutputPath,
+    }
+
     const commandPath = detection.path ?? harnessId
-    const command = formatCommand(commandPath, args)
+    // Include env prefix in command for copy-paste compatibility
+    const command = formatEnvPrefix(piEnv) + formatCommand(commandPath, args)
 
     if (options.dryRun) {
       debugLog('dry run non-claude')
@@ -486,7 +495,7 @@ export async function run(targetName: string, options: RunOptions): Promise<RunR
     const { exitCode } = await executeHarnessCommand(commandPath, args, {
       interactive: options.interactive,
       cwd: options.cwd ?? options.projectPath,
-      env: options.env,
+      env: piEnv,
     })
     debugLog('non-claude exit', exitCode)
 
@@ -544,6 +553,7 @@ export async function run(targetName: string, options: RunOptions): Promise<RunR
     permissionMode: claudeOptions.permission_mode,
     settingSources,
     settings: options.settings ?? settingsPath,
+    debug: options.debug,
     cwd: options.cwd ?? options.projectPath,
     args: [...(claudeOptions.args ?? []), ...yoloArgs, ...(options.extraArgs ?? [])],
     env: {
@@ -643,6 +653,8 @@ export interface GlobalRunOptions {
   refresh?: boolean | undefined
   /** YOLO mode - skip all permission prompts (--dangerously-skip-permissions) */
   yolo?: boolean | undefined
+  /** Debug mode - enable hook debugging (--debug hooks) */
+  debug?: boolean | undefined
 }
 
 /**
@@ -779,6 +791,7 @@ export async function runGlobalSpace(
       mcpConfig: mcpConfigPath,
       settingSources,
       settings: options.settings ?? settingsPath,
+      debug: options.debug,
       cwd: options.cwd ?? process.cwd(),
       args: [...yoloArgs, ...(options.extraArgs ?? [])],
       env: {
@@ -908,6 +921,7 @@ export async function runLocalSpace(
       mcpConfig: mcpConfigPath,
       settingSources,
       settings: options.settings ?? settingsPath,
+      debug: options.debug,
       cwd: options.cwd ?? spacePath,
       args: [...yoloArgs, ...(options.extraArgs ?? [])],
       env: {

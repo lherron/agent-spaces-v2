@@ -8,8 +8,10 @@
  * - Tool namespacing
  */
 
-import { constants, access, mkdir, readdir, rm, stat, writeFile } from 'node:fs/promises'
-import { basename, join } from 'node:path'
+import { readdirSync } from 'node:fs'
+import { constants, access, mkdir, readdir, rm, stat, symlink, writeFile } from 'node:fs/promises'
+import { homedir } from 'node:os'
+import { basename, isAbsolute, join } from 'node:path'
 import {
   AspError,
   type ComposeTargetInput,
@@ -400,6 +402,53 @@ export interface HookDefinition {
   harness?: string | undefined
 }
 
+async function isFile(path: string): Promise<boolean> {
+  try {
+    const stats = await stat(path)
+    return stats.isFile()
+  } catch {
+    return false
+  }
+}
+
+async function resolveHookScriptPath(script: string, hooksDir: string): Promise<string> {
+  const normalized = script.replace(/^\$\{CLAUDE_PLUGIN_ROOT\}\//, '').replace(/^hooks\//, '')
+
+  // Treat commands with whitespace as raw shell commands.
+  if (/\s/.test(normalized)) {
+    return script
+  }
+
+  if (isAbsolute(normalized)) {
+    if (await isFile(normalized)) {
+      return normalized
+    }
+    throw new AspError(`Hook script not found: "${script}"`, 'HOOK_SCRIPT_NOT_FOUND')
+  }
+
+  const directPath = join(hooksDir, normalized)
+  if (await isFile(directPath)) {
+    return directPath
+  }
+
+  if (!normalized.startsWith('scripts/')) {
+    const scriptsPath = join(hooksDir, 'scripts', normalized)
+    if (await isFile(scriptsPath)) {
+      return scriptsPath
+    }
+  }
+
+  // If it doesn't look like a path, treat as a command.
+  if (!normalized.includes('/') && !normalized.includes('\\')) {
+    return script
+  }
+
+  throw new AspError(
+    `Hook script not found: "${script}" (tried "${directPath}")`,
+    'HOOK_SCRIPT_NOT_FOUND'
+  )
+}
+
 /**
  * Generate the hook bridge extension for Pi.
  *
@@ -412,11 +461,23 @@ export function generateHookBridgeCode(hooks: HookDefinition[], spaceIds: string
 
   const hookRegistrations = piHooks
     .map((hook) => {
+      // Map both abstract event names and Claude event names to Pi events
       const eventMap: Record<string, string> = {
+        // Abstract event names (from hooks.toml)
         pre_tool_use: 'tool_call',
         post_tool_use: 'tool_result',
         session_start: 'session_start',
-        session_end: 'session_end',
+        session_end: 'session_shutdown',
+        // Claude event names (from hooks.json)
+        PreToolUse: 'tool_call',
+        PostToolUse: 'tool_result',
+        SessionStart: 'session_start',
+        Stop: 'session_shutdown',
+        // Lowercased variants (from buggy snake_case conversion in readHooksWithPrecedence)
+        sessionstart: 'session_start',
+        pretooluse: 'tool_call',
+        posttooluse: 'tool_result',
+        stop: 'session_shutdown',
       }
 
       const piEvent = eventMap[hook.event] || hook.event
@@ -424,33 +485,82 @@ export function generateHookBridgeCode(hooks: HookDefinition[], spaceIds: string
 
       return `
   // Hook: ${hook.event} -> ${hook.script}
-  pi.registerHook('${piEvent}', async (ctx) => {
+  pi.on('${piEvent}', async (event, ctx) => {
     const toolsFilter = ${toolsFilter};
-    if (toolsFilter && !toolsFilter.includes(ctx.toolName)) {
+    // For tool events, filter by tool name
+    if (toolsFilter && event.toolName && !toolsFilter.includes(event.toolName)) {
       return;
     }
 
     const env = {
       ...process.env,
-      ASP_TOOL_NAME: ctx.toolName || '',
-      ASP_TOOL_ARGS: JSON.stringify(ctx.args || {}),
-      ASP_TOOL_RESULT: JSON.stringify(ctx.result || {}),
+      ASP_TOOL_NAME: event.toolName || '',
+      ASP_TOOL_ARGS: JSON.stringify(event.input || {}),
+      ASP_TOOL_RESULT: JSON.stringify(event.result || {}),
       ASP_HARNESS: 'pi',
       ASP_SPACES: ${JSON.stringify(spaceIds.join(','))},
     };
 
     try {
-      const proc = Bun.spawn(['${hook.script}'], {
+      log('DEBUG', \`Running hook: ${hook.script}\`);
+      const { spawn } = await import('node:child_process');
+      let payload = '';
+      try {
+        payload = JSON.stringify(event ?? {});
+      } catch {
+        payload = '';
+      }
+      const proc = spawn('${hook.script}', [], {
         env,
-        stdout: 'inherit',
-        stderr: 'inherit',
+        stdio: ['pipe', 'pipe', 'pipe'],
+        shell: true,
       });
-      const exitCode = await proc.exited;
-      if (exitCode !== 0 && ${hook.blocking ? 'true' : 'false'}) {
-        console.warn(\`Hook script "${hook.script}" exited with \${exitCode} but Pi cannot block\`);
+      let stdout = '';
+      let stderr = '';
+      proc.stdout?.on('data', (data) => {
+        stdout += data.toString();
+      });
+      proc.stderr?.on('data', (data) => {
+        stderr += data.toString();
+      });
+      if (proc.stdin) {
+        proc.stdin.write(payload);
+        proc.stdin.end();
+      }
+      const exitCode = await new Promise((resolve) => proc.on('close', resolve));
+      const outputParts = [];
+      if (stdout.trim().length > 0) {
+        outputParts.push(stdout.trimEnd());
+      }
+      if (stderr.trim().length > 0) {
+        outputParts.push(\`[stderr]\\n\${stderr.trimEnd()}\`);
+      }
+      if (outputParts.length > 0 || exitCode !== 0) {
+        const header = \`Hook ${hook.event}: ${hook.script}\`;
+        const body = outputParts.length > 0 ? outputParts.join('\\n\\n') : '(no output)';
+        const content = \`\${header}\\n\\n\${body}\`;
+        const options = ctx.isIdle() ? {} : { deliverAs: 'nextTurn' };
+        pi.sendMessage(
+          {
+            customType: 'asp-hook',
+            content,
+            display: true,
+            details: {
+              event: '${hook.event}',
+              script: '${hook.script}',
+              exitCode,
+            },
+          },
+          options
+        );
+      }
+      if (exitCode !== 0) {
+        log('WARN', \`Hook script "${hook.script}" exited with \${exitCode}\`);
+      } else {
+        log('DEBUG', \`Hook script "${hook.script}" completed successfully\`);
       }
     } catch (err) {
-      console.warn(\`Hook script "${hook.script}" failed:\`, err);
+      log('ERROR', \`Hook script "${hook.script}" failed: \${err}\`);
     }
   });`
     })
@@ -465,9 +575,27 @@ export function generateHookBridgeCode(hooks: HookDefinition[], spaceIds: string
  * executing shell scripts with standardized ASP_* environment variables.
  */
 
-export default function(pi) {
-${hookRegistrations || '  // No hooks configured'}
+const fs = require('node:fs');
+const os = require('node:os');
+const path = require('node:path');
+
+const LOG_DIR = path.join(os.homedir(), 'praesidium', 'var', 'logs');
+const LOG_FILE = path.join(LOG_DIR, 'asp-hooks.log');
+
+function log(level, message) {
+  try {
+    fs.mkdirSync(LOG_DIR, { recursive: true });
+    const timestamp = new Date().toISOString();
+    fs.appendFileSync(LOG_FILE, \`[\${timestamp}] [\${level}] \${message}\\n\`);
+  } catch (e) {
+    // Silently fail if logging fails
+  }
 }
+
+module.exports = function(pi) {
+  log('INFO', 'ASP Hook Bridge loaded');
+${hookRegistrations || '  // No hooks configured'}
+};
 `
 }
 
@@ -615,16 +743,16 @@ export class PiAdapter implements HarnessAdapter {
         // Skills directory doesn't exist
       }
 
-      // Copy hooks directory
+      // Copy hooks directory as hooks-scripts/ (Pi has incompatible hooks/ format)
       const srcHooksDir = join(input.snapshotPath, 'hooks')
-      const destHooksDir = join(cacheDir, 'hooks')
+      const destHooksDir = join(cacheDir, 'hooks-scripts')
       try {
         const hooksStats = await stat(srcHooksDir)
         if (hooksStats.isDirectory()) {
           await copyDir(srcHooksDir, destHooksDir)
           const hookEntries = await readdir(destHooksDir)
           for (const entry of hookEntries) {
-            files.push(`hooks/${entry}`)
+            files.push(`hooks-scripts/${entry}`)
           }
         }
       } catch {
@@ -763,12 +891,13 @@ export class PiAdapter implements HarnessAdapter {
 
     // Merge hooks directories and collect hook definitions
     // Priority: hooks.toml (canonical harness-agnostic) > hooks.json (legacy)
-    const hooksDir = join(outputDir, 'hooks')
+    // Use hooks-scripts/ to avoid conflict with Pi's incompatible hooks/ format
+    const hooksDir = join(outputDir, 'hooks-scripts')
     await mkdir(hooksDir, { recursive: true })
     const allHooks: HookDefinition[] = []
 
     for (const artifact of input.artifacts) {
-      const srcHooksDir = join(artifact.artifactPath, 'hooks')
+      const srcHooksDir = join(artifact.artifactPath, 'hooks-scripts')
       try {
         const stats = await stat(srcHooksDir)
         if (stats.isDirectory()) {
@@ -779,13 +908,14 @@ export class PiAdapter implements HarnessAdapter {
           if (hooksResult.hooks.length > 0) {
             // Adjust script paths to be relative to composed hooks dir
             for (const hook of hooksResult.hooks) {
-              // Extract script basename - handle both raw scripts and ${CLAUDE_PLUGIN_ROOT} paths
-              const scriptPath = hook.script.replace(/^\$\{CLAUDE_PLUGIN_ROOT\}\//, '')
-              const scriptBasename = basename(scriptPath)
+              // Extract script path - handle both raw scripts and ${CLAUDE_PLUGIN_ROOT} paths
+              // 1. Strip ${CLAUDE_PLUGIN_ROOT}/ prefix
+              // 2. Strip hooks/ prefix since we renamed hooks/ to hooks-scripts/
+              const scriptPath = await resolveHookScriptPath(hook.script, hooksDir)
 
               allHooks.push({
                 event: hook.event,
-                script: join(hooksDir, scriptBasename),
+                script: scriptPath,
                 tools: hook.tools,
                 blocking: hook.blocking,
                 harness: hook.harness,
@@ -827,6 +957,20 @@ export class PiAdapter implements HarnessAdapter {
       }
     } catch {
       // No skills
+    }
+
+    // Create symlink to ~/.pi/agent/auth.json for Pi authentication
+    const piAuthSource = join(homedir(), '.pi', 'agent', 'auth.json')
+    const piAuthDest = join(outputDir, 'auth.json')
+    try {
+      const authStats = await stat(piAuthSource)
+      if (authStats.isFile()) {
+        // Remove existing symlink/file if present
+        await rm(piAuthDest, { force: true })
+        await symlink(piAuthSource, piAuthDest)
+      }
+    } catch {
+      // ~/.pi/auth.json doesn't exist - Pi will prompt for auth
     }
 
     // Read permissions.toml from each artifact and generate warnings for lint_only facets
@@ -888,52 +1032,59 @@ export class PiAdapter implements HarnessAdapter {
 
   /**
    * Build CLI arguments for running Pi with a composed target bundle.
+   *
+   * This is a synchronous method (required by interface), so we use sync fs operations.
    */
   buildRunArgs(bundle: ComposedTargetBundle, options: HarnessRunOptions): string[] {
     const args: string[] = []
 
     if (!bundle.pi) {
-      return args
+      throw new AspError('Pi bundle is missing - cannot build run args', 'PI_BUNDLE_MISSING')
     }
 
-    // Add extensions
+    // Add extensions from the extensions directory
     const extensionsDir = bundle.pi.extensionsDir
-    try {
-      const files = Bun.spawnSync(['ls', extensionsDir]).stdout.toString().trim().split('\n')
-      for (const file of files) {
-        if (file.endsWith('.js')) {
-          args.push('--extension', join(extensionsDir, file))
-        }
+    let hasExtensions = false
+
+    // Use readdirSync to list extension files (sync required by interface)
+    const entries = readdirSync(extensionsDir, { withFileTypes: true })
+    for (const entry of entries) {
+      if (entry.isFile() && entry.name.endsWith('.js')) {
+        args.push('--extension', join(extensionsDir, entry.name))
+        hasExtensions = true
       }
-    } catch {
-      // No extensions
     }
 
     // Add hook bridge extension
     if (bundle.pi.hookBridgePath) {
       args.push('--extension', bundle.pi.hookBridgePath)
+      hasExtensions = true
     }
 
-    // Add skills directory
-    if (bundle.pi.skillsDir) {
-      args.push('--skills', bundle.pi.skillsDir)
+    // If no extensions found, add --no-extensions flag
+    if (!hasExtensions) {
+      args.push('--no-extensions')
     }
+
+    // Always disable default skill loading from .claude, .codex, ~/.pi/agent/skills/
+    // This ensures isolation - spaces control their own skill loading
+    args.push('--no-skills')
 
     // Model translation (sonnet -> claude-sonnet, etc.)
-    if (options.model) {
-      const translatedModel = MODEL_TRANSLATION[options.model] || options.model
-      args.push('--model', translatedModel)
-    }
+    // Default to gpt-5.2-codex with openai-codex provider if no model specified
+    const model = options.model || 'gpt-5.2-codex'
+    const translatedModel = MODEL_TRANSLATION[model] || model
+    args.push('--model', translatedModel)
+
+    // Default provider for Pi
+    args.push('--provider', 'openai-codex')
 
     // Add extra args
     if (options.extraArgs) {
       args.push(...options.extraArgs)
     }
 
-    // Add project path if provided
-    if (options.projectPath) {
-      args.push(options.projectPath)
-    }
+    // Note: Pi uses cwd for project path, not a positional argument
 
     return args
   }
