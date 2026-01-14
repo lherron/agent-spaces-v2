@@ -66,6 +66,11 @@
             "locked": { "type": "boolean", "default": true },
             "allow_dirty": { "type": "boolean", "default": true }
           }
+        },
+
+        "yolo": {
+          "type": "boolean",
+          "description": "Skip all permission prompts (--dangerously-skip-permissions)"
         }
       }
     }

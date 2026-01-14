@@ -521,10 +521,11 @@ export async function run(targetName: string, options: RunOptions): Promise<RunR
   }
   debugLog('mcp', mcpConfig ?? 'none')
 
-  // Load project manifest to get claude options
+  // Load project manifest to get claude options and target config
   debugLog('load manifest')
   const manifest = await loadProjectManifest(options.projectPath)
   const claudeOptions = getEffectiveClaudeOptions(manifest, targetName)
+  const target = manifest.targets[targetName]
   debugLog('manifest ok')
 
   // Resolve setting sources (null = inherit all, undefined = isolated, string = specific)
@@ -533,7 +534,9 @@ export async function run(targetName: string, options: RunOptions): Promise<RunR
 
   // Build Claude invocation options
   // Use settings from options if provided, otherwise use composed settings from asp_modules
-  const yoloArgs = options.yolo ? ['--dangerously-skip-permissions'] : []
+  // yolo: CLI option overrides target config
+  const effectiveYolo = options.yolo ?? target?.yolo ?? false
+  const yoloArgs = effectiveYolo ? ['--dangerously-skip-permissions'] : []
   const invokeOptions: ClaudeInvokeOptions = {
     pluginDirs,
     mcpConfig,

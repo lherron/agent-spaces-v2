@@ -35,6 +35,8 @@ export interface TargetDefinition {
   claude?: ClaudeOptions
   /** Resolver configuration */
   resolver?: ResolverConfig
+  /** Skip all permission prompts (--dangerously-skip-permissions) */
+  yolo?: boolean
 }
 
 /**

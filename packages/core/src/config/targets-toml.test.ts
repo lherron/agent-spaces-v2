@@ -354,6 +354,24 @@ compose = ["space:my-space@stable"]
         expect((e as ConfigValidationError).validationErrors.length).toBeGreaterThan(0)
       }
     })
+
+    test('shows property name in additionalProperties error message', () => {
+      const toml = `
+schema = 1
+
+[targets.manager]
+compose = ["space:my-space@stable"]
+unknownField = "bad"
+`
+      try {
+        parseTargetsToml(toml)
+        expect.unreachable('should have thrown')
+      } catch (e) {
+        expect(e).toBeInstanceOf(ConfigValidationError)
+        const err = e as ConfigValidationError
+        expect(err.message).toContain('unknown property "unknownField"')
+      }
+    })
   })
 })
 

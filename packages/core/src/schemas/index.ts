@@ -62,6 +62,12 @@ export type ValidationResult<T> =
 function friendlyMessage(err: NonNullable<typeof validateSpaceSchema.errors>[number]): string {
   const defaultMsg = err.message || 'Unknown error'
 
+  // Additional properties errors - show which property is invalid
+  if (err.keyword === 'additionalProperties') {
+    const prop = err.params['additionalProperty'] as string
+    return `unknown property "${prop}"`
+  }
+
   // Space reference pattern errors
   if (err.keyword === 'pattern' && err.instancePath.includes('/compose/')) {
     const value = err.data as string
