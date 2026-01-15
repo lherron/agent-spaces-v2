@@ -19,6 +19,7 @@
   - [ ] Run smoke tests using `asp run --dry-run` where applicable for new harness paths (not yet needed).
 
 **STRETCH GOAL: Remove all dependencies on agent-sdk and pi-sdk from control-plane.**
+- [x] Re-export Claude Agent SDK helpers from `spaces-execution/agent-sdk` so control-plane sidecar can avoid direct SDK imports.
 
 Completed (2026-01-15)
 - Swapped control-plane deps/imports to `spaces-config`/`spaces-execution` and wired `claude-agent-sdk` for agent-spaces materialization.
