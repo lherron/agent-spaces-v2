@@ -4,19 +4,25 @@
   - [x] Update `session-agent-sdk` to consume the execution-plane module and keep its public API stable (`AgentSDKBackend`, `AgentSDKSessionBackend`).
   - [x] Preserve session ID persistence (`onSdkSessionId`) and permission gating behavior.
 
-- [ ] Migrate `@lherron/session-pi` to the agent-spaces execution plane.
-  - [ ] Decide whether to use `pi` (CLI) or `pi-sdk` (SDK) harness for CP sessions; document the expected behavior and environment requirements.
-  - [ ] Use execution-plane bundle materialization to supply `PI_CODING_AGENT_DIR` and any hook/skills dirs rather than custom materializers.
-  - [ ] Keep existing event bridging (Rex EventHub) and permission hook integration; ensure session persistence and per-session state paths are preserved.
+- [x] Migrate `@lherron/session-pi` to the agent-spaces execution plane.
+  - [x] Use `pi-sdk` (SDK) harness for CP sessions; load bundle.json + hooks/skills/context from execution-plane.
+  - [x] Use execution-plane bundle materialization to supply `PI_CODING_AGENT_DIR` and hook/skills dirs (bundle root).
+  - [x] Keep event bridging (Rex EventHub) and permission hook integration; preserve session persistence and per-session state paths.
+  - [x] Re-export pi-coding-agent helpers/types from `spaces-execution/pi-session` to keep control-plane free of direct pi-sdk imports.
+  - [x] Refresh control-plane dependencies so `spaces-execution/pi-session` resolves during builds.
+  - [x] Replace Bun-only I/O/spawn usage in `spaces-config` with Node-compatible fs/spawn to unblock control-plane runtime.
 
 - [ ] Update control-plane wiring and tests for new harness and session backends.
-  - [ ] Adjust control-plane backend router/config defaults if needed to reference `claude-agent-sdk`.
-  - [ ] Update any admin or schema validation that expects specific backend kinds/harness IDs.
-  - [ ] Add/extend integration tests in control-plane to cover agent-spaces materialization via `claude-agent-sdk` and Pi harness flows.
-  - [ ] Run smoke tests using `asp run --dry-run` where applicable for new harness paths.
+  - [x] Wire control-plane Pi backend to agent-spaces pi-sdk materialization (`materializePiSdkForProject`).
+  - [x] Add integration test for pi-sdk materialization (`tests/integration/agent-spaces-pi-sdk.test.js`).
+  - [x] Run control-plane tests/typecheck/lint after dependency refresh.
+  - [ ] Run smoke tests using `asp run --dry-run` where applicable for new harness paths (not yet needed).
+
+**STRETCH GOAL: Remove all dependencies on agent-sdk and pi-sdk from control-plane.**
 
 Completed (2026-01-15)
 - Swapped control-plane deps/imports to `spaces-config`/`spaces-execution` and wired `claude-agent-sdk` for agent-spaces materialization.
 - Added `claude-agent-sdk` harness support (types/schema, adapter, registry, CLI, tests) and execution `materializeFromRefs` wrapper.
 - Fixed control-plane permission hook routing to fall back to the project’s active run when no session_id is available.
 - Migrated `@lherron/session-agent-sdk` core session runner + hook bridge into `spaces-execution` and adapted control-plane wrappers to keep Project-specific config in CP.
+ - Agent-spaces tests/typecheck/lint/build run clean after pi-session module additions.
