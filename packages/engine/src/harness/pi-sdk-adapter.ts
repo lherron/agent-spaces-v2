@@ -9,7 +9,8 @@
  */
 
 import { readdirSync } from 'node:fs'
-import { constants, access, mkdir, readdir, rm, stat, writeFile } from 'node:fs/promises'
+import { constants, access, mkdir, readdir, rm, stat, symlink, writeFile } from 'node:fs/promises'
+import { homedir } from 'node:os'
 import { basename, isAbsolute, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import {
@@ -470,6 +471,20 @@ export class PiSdkAdapter implements HarnessAdapter {
       }
     } catch {
       // No context
+    }
+
+    // Create symlink to ~/.pi/agent/auth.json for Pi authentication
+    const piAuthSource = join(homedir(), '.pi', 'agent', 'auth.json')
+    const piAuthDest = join(outputDir, 'auth.json')
+    try {
+      const authStats = await stat(piAuthSource)
+      if (authStats.isFile()) {
+        // Remove existing symlink/file if present
+        await rm(piAuthDest, { force: true })
+        await symlink(piAuthSource, piAuthDest)
+      }
+    } catch {
+      // ~/.pi/agent/auth.json doesn't exist - Pi will prompt for auth
     }
 
     const bundleManifest: PiSdkBundleManifest = {

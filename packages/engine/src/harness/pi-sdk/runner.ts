@@ -18,6 +18,7 @@ interface RunnerArgs {
   noExtensions: boolean
   noSkills: boolean
   sdkRoot?: string | undefined
+  verbose: boolean
 }
 
 interface PiSdkBundleExtensionEntry {
@@ -70,6 +71,7 @@ function parseArgs(argv: string[]): RunnerArgs {
     yolo: false,
     noExtensions: false,
     noSkills: false,
+    verbose: false,
   }
 
   for (let i = 0; i < argv.length; i += 1) {
@@ -111,6 +113,10 @@ function parseArgs(argv: string[]): RunnerArgs {
       case '--sdk-root':
         args.sdkRoot = argv[i + 1] ?? ''
         i += 1
+        break
+      case '--verbose':
+      case '-v':
+        args.verbose = true
         break
       default:
         if (arg?.startsWith('-')) {
@@ -391,6 +397,51 @@ function buildHookExtension(options: {
   }
 }
 
+function buildVerboseLoggingExtension() {
+  let turnCount = 0
+
+  return (pi: ExtensionApi) => {
+    pi.on('session_start', async () => {
+      console.error('[verbose] session_start')
+      return undefined
+    })
+
+    pi.on('turn_start', async (_event: Record<string, unknown>) => {
+      turnCount += 1
+      console.error(`[verbose] turn_start #${turnCount}`)
+      return undefined
+    })
+
+    pi.on('turn_end', async (event: Record<string, unknown>) => {
+      const usage = event['usage'] as { inputTokens?: number; outputTokens?: number } | undefined
+      const usageStr = usage
+        ? ` (input: ${usage.inputTokens ?? '?'}, output: ${usage.outputTokens ?? '?'})`
+        : ''
+      console.error(`[verbose] turn_end #${turnCount}${usageStr}`)
+      return undefined
+    })
+
+    pi.on('tool_call', async (event: Record<string, unknown>) => {
+      const toolName = event['toolName'] as string | undefined
+      console.error(`[verbose] tool_call: ${toolName ?? 'unknown'}`)
+      return undefined
+    })
+
+    pi.on('tool_result', async (event: Record<string, unknown>) => {
+      const toolName = event['toolName'] as string | undefined
+      const error = event['error'] as string | undefined
+      const status = error ? `error: ${error}` : 'success'
+      console.error(`[verbose] tool_result: ${toolName ?? 'unknown'} (${status})`)
+      return undefined
+    })
+
+    pi.on('session_shutdown', async () => {
+      console.error(`[verbose] session_shutdown (${turnCount} turns)`)
+      return undefined
+    })
+  }
+}
+
 async function main(): Promise<void> {
   const args = parseArgs(process.argv.slice(2))
   const bundleRoot = resolve(args.bundle)
@@ -407,6 +458,17 @@ async function main(): Promise<void> {
   } = sdk
 
   const extensionFactories: ExtensionFactory[] = []
+
+  // Add verbose logging extension first so it logs before other extensions
+  if (args.verbose) {
+    console.error('[verbose] Loading bundle:', bundleRoot)
+    console.error('[verbose] Target:', manifest.targetName)
+    console.error('[verbose] Extensions:', manifest.extensions.length)
+    console.error('[verbose] Hooks:', manifest.hooks?.length ?? 0)
+    console.error('[verbose] Context files:', manifest.contextFiles?.length ?? 0)
+    extensionFactories.push(buildVerboseLoggingExtension())
+  }
+
   const hooks = args.noExtensions ? [] : (manifest.hooks ?? [])
   if (hooks.length > 0) {
     const spaceIds = Array.from(
