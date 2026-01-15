@@ -1,8 +1,8 @@
-- [ ] Migrate `@lherron/session-agent-sdk` to the agent-spaces execution plane.
-  - [ ] Introduce/locate a Claude Agent SDK session runner in `packages/execution` (new module or existing run path) that owns query loop + HooksBridge.
-  - [ ] Move or re-export the `AgentSession`, `HooksBridge`, and permission hook logic from `session-agent-sdk` so execution-plane becomes the source of truth.
-  - [ ] Update `session-agent-sdk` to consume the execution-plane module and keep its public API stable (`AgentSDKBackend`, `AgentSDKSessionBackend`).
-  - [ ] Preserve session ID persistence (`onSdkSessionId`) and permission gating behavior.
+- [x] Migrate `@lherron/session-agent-sdk` to the agent-spaces execution plane.
+  - [x] Introduce/locate a Claude Agent SDK session runner in `packages/execution` (new module or existing run path) that owns query loop + HooksBridge.
+  - [x] Move or re-export the `AgentSession`, `HooksBridge`, and permission hook logic from `session-agent-sdk` so execution-plane becomes the source of truth.
+  - [x] Update `session-agent-sdk` to consume the execution-plane module and keep its public API stable (`AgentSDKBackend`, `AgentSDKSessionBackend`).
+  - [x] Preserve session ID persistence (`onSdkSessionId`) and permission gating behavior.
 
 - [ ] Migrate `@lherron/session-pi` to the agent-spaces execution plane.
   - [ ] Decide whether to use `pi` (CLI) or `pi-sdk` (SDK) harness for CP sessions; document the expected behavior and environment requirements.
@@ -19,3 +19,4 @@ Completed (2026-01-15)
 - Swapped control-plane deps/imports to `spaces-config`/`spaces-execution` and wired `claude-agent-sdk` for agent-spaces materialization.
 - Added `claude-agent-sdk` harness support (types/schema, adapter, registry, CLI, tests) and execution `materializeFromRefs` wrapper.
 - Fixed control-plane permission hook routing to fall back to the project’s active run when no session_id is available.
+- Migrated `@lherron/session-agent-sdk` core session runner + hook bridge into `spaces-execution` and adapted control-plane wrappers to keep Project-specific config in CP.
