@@ -137,6 +137,8 @@ export interface RunOptions extends ResolveOptions {
   yolo?: boolean | undefined
   /** Debug mode - enable hook debugging (--debug hooks) */
   debug?: boolean | undefined
+  /** Model override (passed through to harness) */
+  model?: string | undefined
 }
 
 /**
@@ -457,7 +459,7 @@ export async function run(targetName: string, options: RunOptions): Promise<RunR
     debugLog('non-claude harness', harnessId)
     const bundle = await buildPiBundle(harnessOutputPath, targetName)
     const args = adapter.buildRunArgs(bundle, {
-      model: undefined,
+      model: options.model,
       extraArgs: options.extraArgs,
       projectPath: options.projectPath,
       prompt: options.prompt,
@@ -558,7 +560,7 @@ export async function run(targetName: string, options: RunOptions): Promise<RunR
   const invokeOptions: ClaudeInvokeOptions = {
     pluginDirs,
     mcpConfig,
-    model: claudeOptions.model,
+    model: options.model ?? claudeOptions.model,
     permissionMode: claudeOptions.permission_mode,
     settingSources,
     settings: options.settings ?? settingsPath,
@@ -664,6 +666,8 @@ export interface GlobalRunOptions {
   yolo?: boolean | undefined
   /** Debug mode - enable hook debugging (--debug hooks) */
   debug?: boolean | undefined
+  /** Model override (passed through to harness) */
+  model?: string | undefined
 }
 
 /**
@@ -798,6 +802,7 @@ export async function runGlobalSpace(
     const invokeOptions: ClaudeInvokeOptions = {
       pluginDirs,
       mcpConfig: mcpConfigPath,
+      model: options.model,
       settingSources,
       settings: options.settings ?? settingsPath,
       debug: options.debug,
@@ -928,6 +933,7 @@ export async function runLocalSpace(
     const invokeOptions: ClaudeInvokeOptions = {
       pluginDirs,
       mcpConfig: mcpConfigPath,
+      model: options.model,
       settingSources,
       settings: options.settings ?? settingsPath,
       debug: options.debug,
