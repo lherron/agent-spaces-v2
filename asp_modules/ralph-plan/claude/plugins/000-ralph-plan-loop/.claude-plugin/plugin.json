@@ -1,0 +1,12 @@
+{
+  "name": "ralph-plan-loop",
+  "version": "0.1.0",
+  "description": "Single iteration of Ralph planning: analyze specs vs code, generate IMPLEMENTATION_PLAN.md",
+  "license": "MIT",
+  "keywords": [
+    "ralph",
+    "planning",
+    "gap-analysis",
+    "autonomous"
+  ]
+}

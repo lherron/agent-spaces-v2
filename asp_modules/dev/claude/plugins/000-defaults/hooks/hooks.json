@@ -1,0 +1,40 @@
+{
+	"description": "Default hooks: log all bash commands, log failures, show session info",
+	"hooks": {
+		"PostToolUse": [
+			{
+				"matcher": "Bash",
+				"hooks": [
+					{
+						"type": "command",
+						"command": "python3 ${CLAUDE_PLUGIN_ROOT}/hooks/log-all-bash.py",
+						"timeout": 5
+					}
+				]
+			}
+		],
+		"PostToolUseFailure": [
+			{
+				"matcher": "Bash",
+				"hooks": [
+					{
+						"type": "command",
+						"command": "python3 ${CLAUDE_PLUGIN_ROOT}/hooks/log-failed-bash.py",
+						"timeout": 5
+					}
+				]
+			}
+		],
+		"SessionStart": [
+			{
+				"hooks": [
+					{
+						"type": "command",
+						"command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/session-start.sh",
+						"timeout": 10
+					}
+				]
+			}
+		]
+	}
+}
