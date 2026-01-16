@@ -1,4 +1,4 @@
-Hey bud, need your help with a task.  Please follow these steps carefully and keep context tight.
+I need your help with a task.  Please follow these steps carefully.
 
 0a. Study specs/* to learn the application specifications.
 0b. Study IMPLEMENTATION_PLAN.md.
