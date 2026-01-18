@@ -1,19 +1,19 @@
 {
   "lockfileVersion": 1,
   "resolverVersion": 1,
-  "generatedAt": "2026-01-15T02:32:37.788Z",
+  "generatedAt": "2026-01-18T07:37:34.224Z",
   "registry": {
     "type": "git",
     "url": "/Users/lherron/praesidium/var/spaces-repo/repo"
   },
   "spaces": {
-    "ralph-build-loop@dev": {
-      "id": "ralph-build-loop",
-      "commit": "dev",
-      "path": "spaces/ralph-build-loop",
-      "integrity": "sha256:dev",
+    "project-defaults@project": {
+      "id": "project-defaults",
+      "commit": "project",
+      "path": "spaces/project-defaults",
+      "integrity": "sha256:12529d56fe63ea0e301d35a3cf22a592c2e31978a1d0fe60fdc2e7d33a758fa6",
       "plugin": {
-        "name": "ralph-build-loop",
+        "name": "project-defaults",
         "version": "0.1.0"
       },
       "deps": {
@@ -21,24 +21,46 @@
       },
       "resolvedFrom": {
         "selector": "dev"
+      },
+      "projectSpace": true
+    },
+    "defaults@c6fa9d09fd62": {
+      "id": "defaults",
+      "commit": "c6fa9d09fd627eccb3132a5d271fed8176c08de5",
+      "path": "spaces/defaults",
+      "integrity": "sha256:5783a9caceed13a49575e4dfd26b570160c0b5d137fb82fb6d067d30a062e293",
+      "plugin": {
+        "name": "defaults",
+        "version": "1.0.0"
+      },
+      "deps": {
+        "spaces": []
+      },
+      "resolvedFrom": {
+        "selector": "stable",
+        "tag": "space/defaults/v1.0.0",
+        "semver": "1.0.0"
       }
     }
   },
   "targets": {
-    "ralph-build": {
+    "dev": {
       "compose": [
-        "space:ralph-build-loop@dev"
+        "space:project:project-defaults",
+        "space:defaults@stable"
       ],
       "roots": [
-        "ralph-build-loop@dev"
+        "project-defaults@project",
+        "defaults@c6fa9d09fd62"
       ],
       "loadOrder": [
-        "ralph-build-loop@dev"
+        "project-defaults@project",
+        "defaults@c6fa9d09fd62"
       ],
-      "envHash": "sha256:c3a78a896069bd1b162ccab4260c37722a3bb0dec0d38528addf53f313cca0e4",
+      "envHash": "sha256:08b7941924fff8969cf09fb73114bc03357e56fb15d06e08f1f51265099fe120",
       "harnesses": {
         "claude": {
-          "envHash": "sha256:53b1085b243256ec1a8e0a45450b588fbfe1117b3372cfc099d36c07da4cb36c"
+          "envHash": "sha256:f94986e202cca7de7b4317a931d623f6e42c1da40e03feb202a59b600ebff9c5"
         }
       }
     }
