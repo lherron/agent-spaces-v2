@@ -1,19 +1,19 @@
 {
   "lockfileVersion": 1,
   "resolverVersion": 1,
-  "generatedAt": "2026-01-22T02:40:02.038Z",
+  "generatedAt": "2026-01-23T01:26:20.914Z",
   "registry": {
     "type": "git",
     "url": "/Users/lherron/praesidium/var/spaces-repo/repo"
   },
   "spaces": {
-    "smokey@dev": {
-      "id": "smokey",
-      "commit": "dev",
-      "path": "spaces/smokey",
-      "integrity": "sha256:dev",
+    "project-defaults@project": {
+      "id": "project-defaults",
+      "commit": "project",
+      "path": "spaces/project-defaults",
+      "integrity": "sha256:12529d56fe63ea0e301d35a3cf22a592c2e31978a1d0fe60fdc2e7d33a758fa6",
       "plugin": {
-        "name": "smokey",
+        "name": "project-defaults",
         "version": "0.1.0"
       },
       "deps": {
@@ -21,13 +21,14 @@
       },
       "resolvedFrom": {
         "selector": "dev"
-      }
+      },
+      "projectSpace": true
     },
-    "defaults@c6fa9d09fd62": {
+    "defaults@dev": {
       "id": "defaults",
-      "commit": "c6fa9d09fd627eccb3132a5d271fed8176c08de5",
+      "commit": "dev",
       "path": "spaces/defaults",
-      "integrity": "sha256:5783a9caceed13a49575e4dfd26b570160c0b5d137fb82fb6d067d30a062e293",
+      "integrity": "sha256:dev",
       "plugin": {
         "name": "defaults",
         "version": "1.0.0"
@@ -36,30 +37,47 @@
         "spaces": []
       },
       "resolvedFrom": {
-        "selector": "stable",
-        "tag": "space/defaults/v1.0.0",
-        "semver": "1.0.0"
+        "selector": "dev"
+      }
+    },
+    "praesidium-defaults@dev": {
+      "id": "praesidium-defaults",
+      "commit": "dev",
+      "path": "spaces/praesidium-defaults",
+      "integrity": "sha256:dev",
+      "plugin": {
+        "name": "praesidium-defaults",
+        "version": "0.1.0"
+      },
+      "deps": {
+        "spaces": []
+      },
+      "resolvedFrom": {
+        "selector": "dev"
       }
     }
   },
   "targets": {
-    "smokey": {
+    "clod": {
       "compose": [
-        "space:smokey@dev",
-        "space:defaults@stable"
+        "space:project:project-defaults",
+        "space:defaults@dev",
+        "space:praesidium-defaults@dev"
       ],
       "roots": [
-        "smokey@dev",
-        "defaults@c6fa9d09fd62"
+        "project-defaults@project",
+        "defaults@dev",
+        "praesidium-defaults@dev"
       ],
       "loadOrder": [
-        "smokey@dev",
-        "defaults@c6fa9d09fd62"
+        "project-defaults@project",
+        "defaults@dev",
+        "praesidium-defaults@dev"
       ],
-      "envHash": "sha256:b3b44ec2b11100bb1c6bba52e01149c1e2d2a03c6c39a4fdd45c2a2ae445543a",
+      "envHash": "sha256:5d49584ed8f02f7be665ab99d4f1c1466665dd43baafc8869067451f6197702c",
       "harnesses": {
         "claude": {
-          "envHash": "sha256:092e785fdabf03d9610d7bfac766f3a6fc0378cbfc5e1eff228e07f4850143d8"
+          "envHash": "sha256:3899042ee68b598c308614987e99be0d73c7521600fa1c0ebd984d8ebcdc91df"
         }
       }
     }
