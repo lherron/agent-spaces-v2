@@ -6,18 +6,26 @@ Reference spec: `specs/spec_agent_spaces.md`
 
 All internal implementation items (phases ASP-1 through ASP-4) are **complete**. The agent-spaces public API has been fully rewritten for provider-typed continuity and CP-orchestrated interactive processes.
 
-**Tagged: `v0.3.3`** — spec-complete, all checks green.
+**Tagged: `v0.3.4`** — spec-complete with structured error codes and cwd validation.
 
 **Validation (re-verified 2026-01-28):**
 - `bun run build` — all 9 packages pass
 - `bun run typecheck` — all 9 packages pass
-- `bun run test` — 864 tests pass, 0 fail across all packages
+- `bun run test` — 868 tests pass, 0 fail across all packages
 - `bun run lint` — 232 files checked, no issues
 - No source code references to deprecated names (`harnessSessionId`, `externalSessionId`, `externalRunId`, `runTurn`)
+- No stale `runTurn` references in non-archived docs
 - **Spec-to-implementation comparison: zero discrepancies** — all types, API methods, fields, event structures, and behavioral contracts in `specs/spec_agent_spaces.md` are fully reflected in the implementation
 
+**v0.3.4 fixes (spec compliance hardening):**
+- Structured error codes now attached to thrown errors: `provider_mismatch` (via `CodedError` in `validateProviderMatch`), `unsupported_frontend` (via `CodedError` in `resolveFrontend`). Previously these codes were declared in `AgentSpacesError` but never set.
+- `toAgentSpacesError` now auto-extracts error codes from `CodedError` instances, so all catch-and-wrap paths propagate codes.
+- `cwd` absolute-path validation added to both `buildProcessInvocationSpec` and `runTurnNonInteractive` per spec §6.3.
+- 4 new unit tests: error code assertions for provider mismatch (both paths), continuation provider mismatch code, cwd validation.
+- Stale `runTurn` references in `docs/agent-sdk-smoke-test-runbook.md` and `docs/codex-smoke-test-runbook.md` updated.
+
 **Test coverage:**
-- 27 unit tests in `packages/agent-spaces/src/client.test.ts`
+- 31 unit tests in `packages/agent-spaces/src/client.test.ts`
 - 16 integration tests in `integration-tests/tests/agent-spaces-client.test.ts`
 
 ## Remaining Items (External Dependencies)
@@ -29,8 +37,8 @@ All internal implementation items (phases ASP-1 through ASP-4) are **complete**.
 
 ### Key Files
 - `packages/agent-spaces/src/types.ts` — All new spec types (240 lines)
-- `packages/agent-spaces/src/client.ts` — Client implementation with two execution paths (1151 lines)
-- `packages/agent-spaces/src/client.test.ts` — Unit tests (27 tests, ~550 lines)
+- `packages/agent-spaces/src/client.ts` — Client implementation with two execution paths (~1170 lines)
+- `packages/agent-spaces/src/client.test.ts` — Unit tests (31 tests, ~620 lines)
 - `integration-tests/tests/agent-spaces-client.test.ts` — Integration tests (16 tests, ~360 lines)
 - `scripts/cp-interface-test.ts` — SDK-frontend test script
 - `scripts/codex-interface-test.ts` — CLI-frontend test script
